@@ -21,11 +21,11 @@ static int maze_back_wall_distance = 0;
 
 #define TERMINATE_CHANCE 5
 #define BRANCH_CHANCE 30
-#define OBJECT_CHANCE 20 
+#define OBJECT_CHANCE 20
 
 /* Dimensions of generated maze */
-#define XDIM (8 * 16) 
-#define YDIM 32 
+#define XDIM (8 * 16)
+#define YDIM 32
 
 /* Array to hold the maze.  Each square of the maze is represented by 1 bit.
  * 0 means solid rock, 1 means empty passage.
@@ -39,7 +39,7 @@ typedef struct maze_gen_stack_element {
     unsigned char x, y, direction;
 } maze_gen_stack_element_t;
 static maze_gen_stack_element_t maze_stack[50];
-#define MAZE_STACK_EMPTY -1 
+#define MAZE_STACK_EMPTY -1
 static short maze_stack_ptr = MAZE_STACK_EMPTY;
 static int maze_size = 0;
 static int max_maze_stack_depth = 0;
@@ -51,15 +51,15 @@ typedef struct player_state {
 static player_state_t player;
 
 typedef struct point {
-	signed char x, y;
+    signed char x, y;
 } maze_point_t;
 
 
 typedef struct object {
-	unsigned char x, y;
-	unsigned char type;
-	maze_point_t *drawing;
-	int npoints;
+    unsigned char x, y;
+    unsigned char type;
+    maze_point_t *drawing;
+    int npoints;
 } maze_object_t;
 
 static maze_point_t scroll_points[] =
@@ -101,33 +101,33 @@ static int nobject_types = 11;
 
 static maze_object_t maze_object[MAX_MAZE_OBJECTS];
 static maze_point_t *maze_drawing[] = {
-	scroll_points,
-	dragon_points,
-	chest_points,
-	cobra_points,
-	grenade_points,
-	key_points,
-	orc_points,
-	phantasm_points,
-	potion_points,
-	shield_points,
-	sword_points,
+    scroll_points,
+    dragon_points,
+    chest_points,
+    cobra_points,
+    grenade_points,
+    key_points,
+    orc_points,
+    phantasm_points,
+    potion_points,
+    shield_points,
+    sword_points,
 };
 
 #define ARRAYSIZE(x) (sizeof((x)) / sizeof((x)[0]))
 
 static int maze_drawing_size[] = {
-	ARRAYSIZE(scroll_points),
-	ARRAYSIZE(dragon_points),
-	ARRAYSIZE(chest_points),
-	ARRAYSIZE(cobra_points),
-	ARRAYSIZE(grenade_points),
-	ARRAYSIZE(key_points),
-	ARRAYSIZE(orc_points),
-	ARRAYSIZE(phantasm_points),
-	ARRAYSIZE(potion_points),
-	ARRAYSIZE(shield_points),
-	ARRAYSIZE(sword_points),
+    ARRAYSIZE(scroll_points),
+    ARRAYSIZE(dragon_points),
+    ARRAYSIZE(chest_points),
+    ARRAYSIZE(cobra_points),
+    ARRAYSIZE(grenade_points),
+    ARRAYSIZE(key_points),
+    ARRAYSIZE(orc_points),
+    ARRAYSIZE(phantasm_points),
+    ARRAYSIZE(potion_points),
+    ARRAYSIZE(shield_points),
+    ARRAYSIZE(sword_points),
 };
 
 static int nmaze_objects = 0;
@@ -319,7 +319,7 @@ static void generate_maze(void)
     if (random_choice(BRANCH_CHANCE)) {
         int new_dir = random_choice(50) ? right_dir(*d) : left_dir(*d);
         if (diggable(nx, ny, *x, *y, new_dir))
-            maze_stack_push(nx, ny, (unsigned char) new_dir); 
+            maze_stack_push(nx, ny, (unsigned char) new_dir);
     }
 }
 
@@ -353,23 +353,23 @@ static void plot_point(int x, int y, void *context)
 
 static void draw_object(maze_point_t drawing[], int npoints, float scale)
 {
-	int i;
-	static const int xcenter = SCREEN_XDIM / 2;
-	static const int ycenter = SCREEN_YDIM / 2;
+    int i;
+    static const int xcenter = SCREEN_XDIM / 2;
+    static const int ycenter = SCREEN_YDIM / 2;
 
-	for (i = 0; i < npoints - 1;) {
-		if (drawing[i].x == -128) {
-			i++;
-			continue;
-		}
-		if (drawing[i + 1].x == -128) {
-			i+=2;
-			continue;
-		}
-		bline(xcenter + drawing[i].x * scale, ycenter + drawing[i].y * scale,
-			xcenter + drawing[i + 1].x * scale, ycenter + drawing[i + 1].y * scale, plot_point, screen);
-		i++;
-	}
+    for (i = 0; i < npoints - 1;) {
+        if (drawing[i].x == -128) {
+            i++;
+            continue;
+        }
+        if (drawing[i + 1].x == -128) {
+            i+=2;
+            continue;
+        }
+        bline(xcenter + drawing[i].x * scale, ycenter + drawing[i].y * scale,
+            xcenter + drawing[i + 1].x * scale, ycenter + drawing[i + 1].y * scale, plot_point, screen);
+        i++;
+    }
 }
 
 static void draw_left_passage(int start, int scale)
@@ -440,7 +440,7 @@ static void process_commands(void)
             }
         } else if (strncmp(cmd, "b", 1) == 0) {
             int newx, newy, backwards;
-	    backwards = normalize_direction(player.direction + 4);
+        backwards = normalize_direction(player.direction + 4);
             newx = player.x + xoff[backwards];
             newy = player.y + yoff[backwards];
             if (!out_of_bounds(newx, newy) && is_passage(newx, newy)) {
@@ -448,67 +448,66 @@ static void process_commands(void)
                 player.y = newy;
             }
         } else if (strncmp(cmd, "l", 1) == 0) {
-		player.direction = normalize_direction(player.direction - 2);
+        player.direction = normalize_direction(player.direction - 2);
         } else if (strncmp(cmd, "r", 1) == 0) {
-		player.direction = normalize_direction(player.direction + 2);
-	}
-	else printf("Bad command. Use f, l, r\n");
+        player.direction = normalize_direction(player.direction + 2);
+    }
+    else printf("Bad command. Use f, l, r\n");
     }
     maze_program_state = MAZE_RENDER;
 }
 
 static const float drawing_scale[] = {
-	0.4,
-	0.4 * 0.8,
-	0.4 * 0.8 * 0.8,
-	0.4 * 0.8 * 0.8 * 0.8,
-	0.4 * 0.8 * 0.8 * 0.8 * 0.8,
-	0.4 * 0.8 * 0.8 * 0.8 * 0.8 * 0.8,
-	0.4 * 0.8 * 0.8 * 0.8 * 0.8 * 0.8 * 0.8,
+    0.4,
+    0.4 * 0.8,
+    0.4 * 0.8 * 0.8,
+    0.4 * 0.8 * 0.8 * 0.8,
+    0.4 * 0.8 * 0.8 * 0.8 * 0.8,
+    0.4 * 0.8 * 0.8 * 0.8 * 0.8 * 0.8,
+    0.4 * 0.8 * 0.8 * 0.8 * 0.8 * 0.8 * 0.8,
 };
 
 static void draw_objects(void)
 {
-	int a, b, i, x[2], y[2], s;
+    int a, b, i, x[2], y[2], s;
 
-	a = 0;
-	b = 1;
-	x[0] = player.x;
-	y[0] = player.y;
-	x[1] = player.x + xoff[player.direction] * 6;
-	y[1] = player.y + yoff[player.direction] * 6;
+    a = 0;
+    b = 1;
+    x[0] = player.x;
+    y[0] = player.y;
+    x[1] = player.x + xoff[player.direction] * 6;
+    y[1] = player.y + yoff[player.direction] * 6;
 
-	if (x[0] == x[1]) {
-		if (y[0] > y[1]) {
-			a = 1;
-			b = 0;
-		}
-	} else if (y[0] == y[1]) {
-		if (x[0] > x[1]) {
-			a = 1;
-			b = 0;
-		}
-	}
-	
+    if (x[0] == x[1]) {
+        if (y[0] > y[1]) {
+            a = 1;
+            b = 0;
+        }
+    } else if (y[0] == y[1]) {
+        if (x[0] > x[1]) {
+            a = 1;
+            b = 0;
+        }
+    }
 
-	for (i = 0; i < nmaze_objects; i++) {
-		if (x[0] == x[1]) {
-			if (maze_object[i].x == x[0] && maze_object[i].y >= y[a] && maze_object[i].y <= y[b]) {
-				s = abs(maze_object[i].y - player.y);
-				if (s > maze_back_wall_distance)
-					continue;
-				draw_object(maze_object[i].drawing, maze_drawing_size[maze_object[i].type], drawing_scale[s]);
-			}
-		} else if (y[0] == y[1]) {
-			if (maze_object[i].y == y[0] && maze_object[i].x >= x[a] && maze_object[i].x <= x[b]) {
-				s = abs(maze_object[i].x - player.x);
-				if (s > maze_back_wall_distance)
-					continue;
-				draw_object(maze_object[i].drawing, maze_drawing_size[maze_object[i].type], drawing_scale[s]);
-			}
-		}
-	}
-	maze_program_state = MAZE_SCREEN_RENDER;
+    for (i = 0; i < nmaze_objects; i++) {
+        if (x[0] == x[1]) {
+            if (maze_object[i].x == x[0] && maze_object[i].y >= y[a] && maze_object[i].y <= y[b]) {
+                s = abs(maze_object[i].y - player.y);
+                if (s > maze_back_wall_distance)
+                    continue;
+                draw_object(maze_object[i].drawing, maze_drawing_size[maze_object[i].type], drawing_scale[s]);
+            }
+        } else if (y[0] == y[1]) {
+            if (maze_object[i].y == y[0] && maze_object[i].x >= x[a] && maze_object[i].x <= x[b]) {
+                s = abs(maze_object[i].x - player.x);
+                if (s > maze_back_wall_distance)
+                    continue;
+                draw_object(maze_object[i].drawing, maze_drawing_size[maze_object[i].type], drawing_scale[s]);
+            }
+        }
+    }
+    maze_program_state = MAZE_SCREEN_RENDER;
 }
 
 static void render_maze(void)
@@ -523,7 +522,7 @@ static void render_maze(void)
     ox = player.x;
     oy = player.y;
     for (i = 0; i < steps; i++) {
-	/* Draw the wall we might be facing */
+    /* Draw the wall we might be facing */
         x = ox + xoff[player.direction];
         y = oy + yoff[player.direction];
         if (!out_of_bounds(x, y)) {
@@ -532,7 +531,7 @@ static void render_maze(void)
                 hit_back_wall = 1;
             }
         }
-	/* Draw the wall or passage to our left */
+    /* Draw the wall or passage to our left */
         left = left_dir(player.direction);
         x = ox + xoff[left];
         y = oy + yoff[left];
@@ -542,7 +541,7 @@ static void render_maze(void)
             else
                 draw_left_wall(start, scale);
         }
-	/* Draw the wall or passage to our right */
+    /* Draw the wall or passage to our right */
         right = right_dir(player.direction);
         x = ox + xoff[right];
         y = oy + yoff[right];
@@ -552,7 +551,7 @@ static void render_maze(void)
             else
                 draw_right_wall(start, scale);
         }
-	/* Advance forward ahead of the player in our rendering */
+    /* Advance forward ahead of the player in our rendering */
         start = start + scale;
         scale = (scale * 80) / 100;
         ox += xoff[player.direction];
@@ -580,16 +579,16 @@ static int maze_loop(void)
         render_maze();
         break;
     case MAZE_OBJECT_RENDER:
-	draw_objects();
-	break;
+        draw_objects();
+        break;
     case MAZE_SCREEN_RENDER:
-	render_screen();
-	break;
+        render_screen();
+        break;
     case MAZE_PROCESS_COMMANDS:
-	process_commands();
-	break;
+        process_commands();
+        break;
     case MAZE_EXIT:
-        return 1; 
+        return 1;
     }
     return 0;
 }
@@ -604,6 +603,6 @@ int main(int argc, char *argv[])
     do {
         if (maze_loop())
             return 0;
-    } while (1);    
+    } while (1);
     return 0;
 }
