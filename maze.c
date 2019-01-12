@@ -29,7 +29,7 @@ static int current_drawing_object = 0;
 
 /* Dimensions of generated maze */
 #define XDIM (4 * 16)
-#define YDIM 64 
+#define YDIM 64
 
 /* Array to hold the maze.  Each square of the maze is represented by 1 bit.
  * 0 means solid rock, 1 means empty passage.
@@ -341,7 +341,10 @@ static void print_maze()
     for (j = 0; j < YDIM; j++) {
         for (i = 0; i < XDIM; i++) {
             if (is_passage(i, j))
-                printf(" ");
+                if (j == player.y && i == player.x)
+                    printf("@");
+                else
+                    printf(" ");
             else
                 printf("#");
         }
@@ -451,7 +454,7 @@ static void process_commands(void)
             }
         } else if (strncmp(cmd, "b", 1) == 0) {
             int newx, newy, backwards;
-        backwards = normalize_direction(player.direction + 4);
+            backwards = normalize_direction(player.direction + 4);
             newx = player.x + xoff[backwards];
             newy = player.y + yoff[backwards];
             if (!out_of_bounds(newx, newy) && is_passage(newx, newy)) {
@@ -459,11 +462,13 @@ static void process_commands(void)
                 player.y = newy;
             }
         } else if (strncmp(cmd, "l", 1) == 0) {
-        player.direction = normalize_direction(player.direction - 2);
+            player.direction = normalize_direction(player.direction - 2);
         } else if (strncmp(cmd, "r", 1) == 0) {
-        player.direction = normalize_direction(player.direction + 2);
-    }
-    else printf("Bad command. Use f, l, r\n");
+            player.direction = normalize_direction(player.direction + 2);
+        } else if (strncmp(cmd, "m", 1) == 0) {
+            maze_program_state = MAZE_PRINT;
+            return;
+        } else printf("Bad command. Use f, l, r\n");
     }
     maze_program_state = MAZE_RENDER;
 }
@@ -549,7 +554,8 @@ static void render_maze(void)
     y = oy;
     if (!out_of_bounds(x, y)) {
         if (!is_passage(x, y)) {
-            draw_forward_wall(maze_start + maze_scale, (maze_scale * 80) / 100);
+            // draw_forward_wall(maze_start + maze_scale, (maze_scale * 80) / 100);
+            draw_forward_wall(maze_start, (maze_scale * 80) / 100);
             hit_back_wall = 1;
         }
     }
@@ -557,7 +563,7 @@ static void render_maze(void)
     left = left_dir(player.direction);
     x = ox + xoff[left];
     y = oy + yoff[left];
-    if (!out_of_bounds(x, y)) {
+    if (!out_of_bounds(x, y) && !hit_back_wall) {
         if (is_passage(x, y))
             draw_left_passage(maze_start, maze_scale);
         else
@@ -567,7 +573,7 @@ static void render_maze(void)
     right = right_dir(player.direction);
     x = ox + xoff[right];
     y = oy + yoff[right];
-    if (!out_of_bounds(x, y)) {
+    if (!out_of_bounds(x, y) && !hit_back_wall) {
         if (is_passage(x, y))
             draw_right_passage(maze_start, maze_scale);
         else
