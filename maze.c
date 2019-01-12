@@ -14,7 +14,7 @@ enum maze_program_state_t {
     MAZE_OBJECT_RENDER,
     MAZE_SCREEN_RENDER,
     MAZE_PROCESS_COMMANDS,
-    MAZE_EXIT,
+    MAZE_EXIT
 };
 static enum maze_program_state_t maze_program_state = MAZE_INIT;
 static int maze_back_wall_distance = 7;
@@ -34,7 +34,7 @@ static int current_drawing_object = 0;
 /* Array to hold the maze.  Each square of the maze is represented by 1 bit.
  * 0 means solid rock, 1 means empty passage.
  */
-static unsigned char maze[XDIM >> 3][YDIM] = { 0 };
+static unsigned char maze[XDIM >> 3][YDIM] = { { 0 }, };
 
 /*
  * Stack structure used when generating maze to remember where we left off.
@@ -58,12 +58,34 @@ typedef struct point {
     signed char x, y;
 } maze_point_t;
 
+typedef union maze_object_type_specific_data {
+    struct {
+        unsigned char hitpoints;
+    } monster;
+    struct {
+        signed char health_impact;
+    } potion;
+} maze_object_type_specific_data_t;
+
+enum maze_object_category {
+    MAZE_OBJECT_MONSTER,
+    MAZE_OBJECT_WEAPON,
+    MAZE_OBJECT_KEY,
+    MAZE_OBJECT_POTION,
+    MAZE_OBJECT_ARMOR,
+    MAZE_OBJECT_TREASURE
+};
+
+typedef struct maze_object_template {
+    char name[20];
+    enum maze_object_category category;
+    maze_point_t *drawing;
+    int npoints;
+} maze_object_template_t;
 
 typedef struct object {
     unsigned char x, y;
     unsigned char type;
-    maze_point_t *drawing;
-    int npoints;
 } maze_object_t;
 
 static maze_point_t scroll_points[] =
@@ -99,41 +121,27 @@ static maze_point_t shield_points[] =
 static maze_point_t sword_points[] =
 #include "sword_points.h"
 
-static int nobject_types = 11;
+#define MAZE_NOBJECT_TYPES 11
+static int nobject_types = MAZE_NOBJECT_TYPES;
 
 #define MAX_MAZE_OBJECTS 30
-
-static maze_object_t maze_object[MAX_MAZE_OBJECTS];
-static maze_point_t *maze_drawing[] = {
-    scroll_points,
-    dragon_points,
-    chest_points,
-    cobra_points,
-    grenade_points,
-    key_points,
-    orc_points,
-    phantasm_points,
-    potion_points,
-    shield_points,
-    sword_points,
-};
-
 #define ARRAYSIZE(x) (sizeof((x)) / sizeof((x)[0]))
 
-static int maze_drawing_size[] = {
-    ARRAYSIZE(scroll_points),
-    ARRAYSIZE(dragon_points),
-    ARRAYSIZE(chest_points),
-    ARRAYSIZE(cobra_points),
-    ARRAYSIZE(grenade_points),
-    ARRAYSIZE(key_points),
-    ARRAYSIZE(orc_points),
-    ARRAYSIZE(phantasm_points),
-    ARRAYSIZE(potion_points),
-    ARRAYSIZE(shield_points),
-    ARRAYSIZE(sword_points),
+static maze_object_template_t maze_object_template[] = {
+    { "SCROLL", MAZE_OBJECT_WEAPON, scroll_points, ARRAYSIZE(scroll_points), },
+    { "DRAGON", MAZE_OBJECT_WEAPON, dragon_points, ARRAYSIZE(dragon_points), },
+    { "CHEST", MAZE_OBJECT_TREASURE, chest_points, ARRAYSIZE(chest_points), },
+    { "COBRA", MAZE_OBJECT_MONSTER, cobra_points, ARRAYSIZE(cobra_points), },
+    { "GRENADE", MAZE_OBJECT_WEAPON, grenade_points, ARRAYSIZE(grenade_points), },
+    { "KEY", MAZE_OBJECT_KEY, key_points, ARRAYSIZE(key_points), },
+    { "ORC", MAZE_OBJECT_MONSTER, orc_points, ARRAYSIZE(orc_points), },
+    { "PHANTASM", MAZE_OBJECT_MONSTER, phantasm_points, ARRAYSIZE(phantasm_points), },
+    { "POTION", MAZE_OBJECT_POTION, potion_points, ARRAYSIZE(potion_points), },
+    { "SHIELD", MAZE_OBJECT_ARMOR, shield_points, ARRAYSIZE(shield_points), },
+    { "SWORD", MAZE_OBJECT_WEAPON, sword_points, ARRAYSIZE(sword_points), },
 };
 
+static maze_object_t maze_object[MAX_MAZE_OBJECTS];
 static int nmaze_objects = 0;
 
 static int min_maze_size(void)
@@ -270,7 +278,6 @@ static void add_object(int x, int y)
     maze_object[nmaze_objects].x = x;
     maze_object[nmaze_objects].y = y;
     maze_object[nmaze_objects].type = rand() % nobject_types;
-    maze_object[nmaze_objects].drawing = maze_drawing[maze_object[nmaze_objects].type];
     nmaze_objects++;
 }
 
@@ -473,7 +480,8 @@ static const float drawing_scale[] = {
 
 static void draw_objects(void)
 {
-    int a, b, i, x[2], y[2], s;
+    int a, b, i, x[2], y[2], s, otype, npoints;
+    maze_point_t *drawing;
 
     a = 0;
     b = 1;
@@ -495,19 +503,22 @@ static void draw_objects(void)
     }
 
     i = current_drawing_object;
+    otype = maze_object[i].type;
+    drawing = maze_object_template[otype].drawing;
+    npoints = maze_object_template[otype].npoints;
     if (x[0] == x[1]) {
         if (maze_object[i].x == x[0] && maze_object[i].y >= y[a] && maze_object[i].y <= y[b]) {
             s = abs(maze_object[i].y - player.y);
             if (s > maze_object_distance_limit)
                 goto next_object;
-            draw_object(maze_object[i].drawing, maze_drawing_size[maze_object[i].type], drawing_scale[s]);
+            draw_object(drawing, npoints, drawing_scale[s]);
         }
     } else if (y[0] == y[1]) {
         if (maze_object[i].y == y[0] && maze_object[i].x >= x[a] && maze_object[i].x <= x[b]) {
             s = abs(maze_object[i].x - player.x);
             if (s > maze_object_distance_limit)
                 goto next_object;
-            draw_object(maze_object[i].drawing, maze_drawing_size[maze_object[i].type], drawing_scale[s]);
+            draw_object(drawing, npoints, drawing_scale[s]);
         }
     }
 
