@@ -514,14 +514,14 @@ static void draw_objects(void)
     if (x[0] == x[1]) {
         if (maze_object[i].x == x[0] && maze_object[i].y >= y[a] && maze_object[i].y <= y[b]) {
             s = abs(maze_object[i].y - player.y);
-            if (s > maze_object_distance_limit)
+            if (s >= maze_object_distance_limit)
                 goto next_object;
             draw_object(drawing, npoints, drawing_scale[s]);
         }
     } else if (y[0] == y[1]) {
         if (maze_object[i].y == y[0] && maze_object[i].x >= x[a] && maze_object[i].x <= x[b]) {
             s = abs(maze_object[i].x - player.x);
-            if (s > maze_object_distance_limit)
+            if (s >= maze_object_distance_limit)
                 goto next_object;
             draw_object(drawing, npoints, drawing_scale[s]);
         }
@@ -591,6 +591,7 @@ static void render_maze(void)
     if (maze_render_step >= steps) {
         maze_render_step = 0;
         maze_back_wall_distance = steps;
+        maze_object_distance_limit = steps;
         maze_program_state = MAZE_OBJECT_RENDER;
         maze_start = 0;
         maze_scale = 12;
