@@ -18,8 +18,10 @@ enum maze_program_state_t {
 };
 static enum maze_program_state_t maze_program_state = MAZE_INIT;
 static int maze_back_wall_distance = 7;
+static int maze_object_distance_limit = 0;
 static int maze_start = 0;
 static int maze_scale = 12;
+static int current_drawing_object = 0;
 
 #define TERMINATE_CHANCE 5
 #define BRANCH_CHANCE 30
@@ -492,24 +494,29 @@ static void draw_objects(void)
         }
     }
 
-    for (i = 0; i < nmaze_objects; i++) {
-        if (x[0] == x[1]) {
-            if (maze_object[i].x == x[0] && maze_object[i].y >= y[a] && maze_object[i].y <= y[b]) {
-                s = abs(maze_object[i].y - player.y);
-                if (s > maze_back_wall_distance)
-                    continue;
-                draw_object(maze_object[i].drawing, maze_drawing_size[maze_object[i].type], drawing_scale[s]);
-            }
-        } else if (y[0] == y[1]) {
-            if (maze_object[i].y == y[0] && maze_object[i].x >= x[a] && maze_object[i].x <= x[b]) {
-                s = abs(maze_object[i].x - player.x);
-                if (s > maze_back_wall_distance)
-                    continue;
-                draw_object(maze_object[i].drawing, maze_drawing_size[maze_object[i].type], drawing_scale[s]);
-            }
+    i = current_drawing_object;
+    if (x[0] == x[1]) {
+        if (maze_object[i].x == x[0] && maze_object[i].y >= y[a] && maze_object[i].y <= y[b]) {
+            s = abs(maze_object[i].y - player.y);
+            if (s > maze_object_distance_limit)
+                goto next_object;
+            draw_object(maze_object[i].drawing, maze_drawing_size[maze_object[i].type], drawing_scale[s]);
+        }
+    } else if (y[0] == y[1]) {
+        if (maze_object[i].y == y[0] && maze_object[i].x >= x[a] && maze_object[i].x <= x[b]) {
+            s = abs(maze_object[i].x - player.x);
+            if (s > maze_object_distance_limit)
+                goto next_object;
+            draw_object(maze_object[i].drawing, maze_drawing_size[maze_object[i].type], drawing_scale[s]);
         }
     }
-    maze_program_state = MAZE_SCREEN_RENDER;
+
+next_object:
+    current_drawing_object++;
+    if (current_drawing_object >= nmaze_objects) {
+        current_drawing_object = 0;
+        maze_program_state = MAZE_SCREEN_RENDER;
+    }
 }
 
 static int maze_render_step = 0;
@@ -560,6 +567,7 @@ static void render_maze(void)
     maze_scale = (maze_scale * 80) / 100;
     if (hit_back_wall) { /* If we are facing a wall, do not draw beyond that wall. */
         maze_back_wall_distance = maze_render_step; /* used by draw_objects */
+        maze_object_distance_limit = maze_render_step;
         maze_render_step = steps;
     }
     maze_render_step++;
