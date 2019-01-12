@@ -17,7 +17,9 @@ enum maze_program_state_t {
     MAZE_EXIT,
 };
 static enum maze_program_state_t maze_program_state = MAZE_INIT;
-static int maze_back_wall_distance = 0;
+static int maze_back_wall_distance = 7;
+static int maze_start = 0;
+static int maze_scale = 12;
 
 #define TERMINATE_CHANCE 5
 #define BRANCH_CHANCE 30
@@ -510,57 +512,64 @@ static void draw_objects(void)
     maze_program_state = MAZE_SCREEN_RENDER;
 }
 
+static int maze_render_step = 0;
+
 static void render_maze(void)
 {
-    memset(screen, ' ', SCREEN_XDIM * SCREEN_YDIM);
-    int i, x, y, ox, oy, left, right;
+    int x, y, ox, oy, left, right;
     const int steps = 7;
-    int scale = 12;
-    int start = 0;
     int hit_back_wall = 0;
 
-    ox = player.x;
-    oy = player.y;
-    for (i = 0; i < steps; i++) {
+    if (maze_render_step == 0)
+        memset(screen, ' ', SCREEN_XDIM * SCREEN_YDIM);
+
+    ox = player.x + xoff[player.direction] * maze_render_step;
+    oy = player.y + yoff[player.direction] * maze_render_step;
+
     /* Draw the wall we might be facing */
-        x = ox + xoff[player.direction];
-        y = oy + yoff[player.direction];
-        if (!out_of_bounds(x, y)) {
-            if (!is_passage(x, y)) {
-                draw_forward_wall(start + scale, (scale * 80) / 100);
-                hit_back_wall = 1;
-            }
+    x = ox;
+    y = oy;
+    if (!out_of_bounds(x, y)) {
+        if (!is_passage(x, y)) {
+            draw_forward_wall(maze_start + maze_scale, (maze_scale * 80) / 100);
+            hit_back_wall = 1;
         }
-    /* Draw the wall or passage to our left */
-        left = left_dir(player.direction);
-        x = ox + xoff[left];
-        y = oy + yoff[left];
-        if (!out_of_bounds(x, y)) {
-            if (is_passage(x, y))
-                draw_left_passage(start, scale);
-            else
-                draw_left_wall(start, scale);
-        }
-    /* Draw the wall or passage to our right */
-        right = right_dir(player.direction);
-        x = ox + xoff[right];
-        y = oy + yoff[right];
-        if (!out_of_bounds(x, y)) {
-            if (is_passage(x, y))
-                draw_right_passage(start, scale);
-            else
-                draw_right_wall(start, scale);
-        }
-    /* Advance forward ahead of the player in our rendering */
-        start = start + scale;
-        scale = (scale * 80) / 100;
-        ox += xoff[player.direction];
-        oy += yoff[player.direction];
-        if (hit_back_wall) /* If we are facing a wall, do not draw beyond that wall. */
-            break;
     }
-    maze_back_wall_distance = i; /* used by draw_objects */
-    maze_program_state = MAZE_OBJECT_RENDER;
+    /* Draw the wall or passage to our left */
+    left = left_dir(player.direction);
+    x = ox + xoff[left];
+    y = oy + yoff[left];
+    if (!out_of_bounds(x, y)) {
+        if (is_passage(x, y))
+            draw_left_passage(maze_start, maze_scale);
+        else
+            draw_left_wall(maze_start, maze_scale);
+    }
+    /* Draw the wall or passage to our right */
+    right = right_dir(player.direction);
+    x = ox + xoff[right];
+    y = oy + yoff[right];
+    if (!out_of_bounds(x, y)) {
+        if (is_passage(x, y))
+            draw_right_passage(maze_start, maze_scale);
+        else
+            draw_right_wall(maze_start, maze_scale);
+    }
+    /* Advance forward ahead of the player in our rendering */
+    maze_start = maze_start + maze_scale;
+    maze_scale = (maze_scale * 80) / 100;
+    if (hit_back_wall) { /* If we are facing a wall, do not draw beyond that wall. */
+        maze_back_wall_distance = maze_render_step; /* used by draw_objects */
+        maze_render_step = steps;
+    }
+    maze_render_step++;
+    if (maze_render_step >= steps) {
+        maze_render_step = 0;
+        maze_back_wall_distance = steps;
+        maze_program_state = MAZE_OBJECT_RENDER;
+        maze_start = 0;
+        maze_scale = 12;
+   }
 }
 
 static int maze_loop(void)
