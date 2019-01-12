@@ -11,9 +11,13 @@ enum maze_program_state_t {
     MAZE_BUILD,
     MAZE_PRINT,
     MAZE_RENDER,
+    MAZE_OBJECT_RENDER,
+    MAZE_SCREEN_RENDER,
+    MAZE_PROCESS_COMMANDS,
     MAZE_EXIT,
 };
 static enum maze_program_state_t maze_program_state = MAZE_INIT;
+static int maze_back_wall_distance = 0;
 
 #define TERMINATE_CHANCE 5
 #define BRANCH_CHANCE 30
@@ -413,6 +417,7 @@ static void render_screen(void)
             printf("%c", screen[x][y]);
         printf("\n");
     }
+    maze_program_state = MAZE_PROCESS_COMMANDS;
 }
 
 static void process_commands(void)
@@ -449,6 +454,7 @@ static void process_commands(void)
 	}
 	else printf("Bad command. Use f, l, r\n");
     }
+    maze_program_state = MAZE_RENDER;
 }
 
 static const float drawing_scale[] = {
@@ -461,7 +467,7 @@ static const float drawing_scale[] = {
 	0.4 * 0.8 * 0.8 * 0.8 * 0.8 * 0.8 * 0.8,
 };
 
-static void draw_objects(int distance_limit)
+static void draw_objects(void)
 {
 	int a, b, i, x[2], y[2], s;
 
@@ -489,19 +495,20 @@ static void draw_objects(int distance_limit)
 		if (x[0] == x[1]) {
 			if (maze_object[i].x == x[0] && maze_object[i].y >= y[a] && maze_object[i].y <= y[b]) {
 				s = abs(maze_object[i].y - player.y);
-				if (s > distance_limit)
+				if (s > maze_back_wall_distance)
 					continue;
 				draw_object(maze_object[i].drawing, maze_drawing_size[maze_object[i].type], drawing_scale[s]);
 			}
 		} else if (y[0] == y[1]) {
 			if (maze_object[i].y == y[0] && maze_object[i].x >= x[a] && maze_object[i].x <= x[b]) {
 				s = abs(maze_object[i].x - player.x);
-				if (s > distance_limit)
+				if (s > maze_back_wall_distance)
 					continue;
 				draw_object(maze_object[i].drawing, maze_drawing_size[maze_object[i].type], drawing_scale[s]);
 			}
 		}
 	}
+	maze_program_state = MAZE_SCREEN_RENDER;
 }
 
 static void render_maze(void)
@@ -553,11 +560,8 @@ static void render_maze(void)
         if (hit_back_wall) /* If we are facing a wall, do not draw beyond that wall. */
             break;
     }
-
-
-    draw_objects(i);
-    render_screen();
-    process_commands();
+    maze_back_wall_distance = i; /* used by draw_objects */
+    maze_program_state = MAZE_OBJECT_RENDER;
 }
 
 static int maze_loop(void)
@@ -575,6 +579,15 @@ static int maze_loop(void)
     case MAZE_RENDER:
         render_maze();
         break;
+    case MAZE_OBJECT_RENDER:
+	draw_objects();
+	break;
+    case MAZE_SCREEN_RENDER:
+	render_screen();
+	break;
+    case MAZE_PROCESS_COMMANDS:
+	process_commands();
+	break;
     case MAZE_EXIT:
         return 1; 
     }
