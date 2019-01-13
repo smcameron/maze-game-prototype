@@ -36,6 +36,7 @@ static int current_drawing_object = 0;
  * 0 means solid rock, 1 means empty passage.
  */
 static unsigned char maze[XDIM >> 3][YDIM] = { { 0 }, };
+static unsigned char maze_visited[XDIM >> 3][YDIM] = { { 0 }, };
 
 /*
  * Stack structure used when generating maze to remember where we left off.
@@ -183,6 +184,7 @@ static void maze_init(void)
     player.direction = 0;
     max_maze_stack_depth = 0;
     memset(maze, 0, sizeof(maze));
+    memset(maze_visited, 0, sizeof(maze_visited));
     maze_stack_ptr = MAZE_STACK_EMPTY;
     maze_stack_push(player.x, player.y, player.direction);
     maze_program_state = MAZE_BUILD;
@@ -203,6 +205,18 @@ static void dig_maze_square(unsigned char x, unsigned char y)
     x = x >> 3;
     maze[x][y] |= bit;
     maze_size++;
+}
+
+static void mark_maze_square_visited(unsigned char x, unsigned char y)
+{
+    unsigned char bit = 1 << (x % 8);
+    x = x >> 3;
+    maze_visited[x][y] |= bit;
+}
+
+static int is_visited(unsigned char x, unsigned char y)
+{
+    return maze_visited[x >> 3][y] & (1 << (x % 8));
 }
 
 /* Returns 0 if x,y are in bounds of maze dimensions, 1 otherwise */
@@ -376,7 +390,7 @@ static void draw_map()
                 bline(x * 3, y * 3, x * 3, y * 3, plot_point, screen);
                 continue;
             }
-            if (is_passage(x, y)) {
+            if (is_visited(x, y)) {
                 bline(x * 3 - 1, y * 3 - 1, x * 3 + 1, y * 3 - 1, plot_point, screen);
                 bline(x * 3 - 1, y * 3, x * 3 + 1, y * 3, plot_point, screen);
                 bline(x * 3 - 1, y * 3 + 1, x * 3 + 1, y * 3 + 1, plot_point, screen);
@@ -581,6 +595,8 @@ static void render_maze(void)
             // draw_forward_wall(maze_start + maze_scale, (maze_scale * 80) / 100);
             draw_forward_wall(maze_start, (maze_scale * 80) / 100);
             hit_back_wall = 1;
+        } else {
+            mark_maze_square_visited(ox, oy);
         }
     }
     /* Draw the wall or passage to our left */
@@ -588,20 +604,24 @@ static void render_maze(void)
     x = ox + xoff[left];
     y = oy + yoff[left];
     if (!out_of_bounds(x, y) && !hit_back_wall) {
-        if (is_passage(x, y))
+        if (is_passage(x, y)) {
             draw_left_passage(maze_start, maze_scale);
-        else
+            mark_maze_square_visited(x, y);
+        } else {
             draw_left_wall(maze_start, maze_scale);
+        }
     }
     /* Draw the wall or passage to our right */
     right = right_dir(player.direction);
     x = ox + xoff[right];
     y = oy + yoff[right];
     if (!out_of_bounds(x, y) && !hit_back_wall) {
-        if (is_passage(x, y))
+        if (is_passage(x, y)) {
             draw_right_passage(maze_start, maze_scale);
-        else
+            mark_maze_square_visited(x, y);
+        } else {
             draw_right_wall(maze_start, maze_scale);
+        }
     }
     /* Advance forward ahead of the player in our rendering */
     maze_start = maze_start + maze_scale;
