@@ -212,6 +212,15 @@ static int out_of_bounds(int x, int y)
     return 1;
 }
 
+static unsigned char normalize_direction(int direction)
+{
+    if (direction < 0)
+        return (unsigned char) direction + 8;
+    if (direction > 7)
+        return (unsigned char) direction - 8;
+    return direction;
+}
+
 /* Last dug oldx, oldy, consider whether digx, digy is diggable.  */
 static int diggable(unsigned char digx, unsigned char digy, unsigned char oldx, unsigned char oldy, unsigned char direction)
 {
@@ -249,15 +258,6 @@ static int random_choice(int chance)
     float r = (float) rand() / (float) RAND_MAX;
 
     return (r * 1000 < 10 * chance);
-}
-
-static unsigned char normalize_direction(int direction)
-{
-    if (direction < 0)
-        return (unsigned char) direction + 8;
-    if (direction > 7)
-        return (unsigned char) direction - 8;
-    return direction;
 }
 
 static unsigned char left_dir(int direction)
