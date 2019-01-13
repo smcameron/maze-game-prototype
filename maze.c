@@ -543,8 +543,10 @@ static void render_maze(void)
     const int steps = 7;
     int hit_back_wall = 0;
 
-    if (maze_render_step == 0)
+    if (maze_render_step == 0) {
         memset(screen, ' ', SCREEN_XDIM * SCREEN_YDIM);
+        maze_object_distance_limit = steps;
+    }
 
     ox = player.x + xoff[player.direction] * maze_render_step;
     oy = player.y + yoff[player.direction] * maze_render_step;
@@ -591,7 +593,6 @@ static void render_maze(void)
     if (maze_render_step >= steps) {
         maze_render_step = 0;
         maze_back_wall_distance = steps;
-        maze_object_distance_limit = steps;
         maze_program_state = MAZE_OBJECT_RENDER;
         maze_start = 0;
         maze_scale = 12;
