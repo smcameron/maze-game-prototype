@@ -14,6 +14,7 @@ enum maze_program_state_t {
     MAZE_OBJECT_RENDER,
     MAZE_SCREEN_RENDER,
     MAZE_PROCESS_COMMANDS,
+    MAZE_DRAW_MAP,
     MAZE_EXIT
 };
 static enum maze_program_state_t maze_program_state = MAZE_INIT;
@@ -364,6 +365,27 @@ static void plot_point(int x, int y, void *context)
     screen[SCREEN_YDIM * x + y] = '#';
 }
 
+static void draw_map()
+{
+    int x, y;
+
+    memset(screen, ' ', SCREEN_XDIM * SCREEN_YDIM);
+    for (x = 0; x < XDIM; x++) {
+        for (y = 0; y < YDIM; y++) {
+            if (x == player.x && y == player.y) {
+                bline(x * 3, y * 3, x * 3, y * 3, plot_point, screen);
+                continue;
+            }
+            if (is_passage(x, y)) {
+                bline(x * 3 - 1, y * 3 - 1, x * 3 + 1, y * 3 - 1, plot_point, screen);
+                bline(x * 3 - 1, y * 3, x * 3 + 1, y * 3, plot_point, screen);
+                bline(x * 3 - 1, y * 3 + 1, x * 3 + 1, y * 3 + 1, plot_point, screen);
+            }
+       }
+    }
+    maze_program_state = MAZE_SCREEN_RENDER;
+}
+
 /* These integer ratios approximate 0.4, 0.4 * 0.8, 0.4 * 0.8^2, 0.4 * 0.8^3, 0.4 * 0.8^4, ...
  * which are used to approximate appropriate perspective scaling (reduction in size as viewing
  * distance linearly increases stepwise) while avoiding floating point operations.
@@ -476,7 +498,7 @@ static void process_commands(void)
         } else if (strncmp(cmd, "r", 1) == 0) {
             player.direction = normalize_direction(player.direction + 2);
         } else if (strncmp(cmd, "m", 1) == 0) {
-            maze_program_state = MAZE_PRINT;
+            maze_program_state = MAZE_DRAW_MAP;
             return;
         } else printf("Bad command. Use f, l, r\n");
     }
@@ -622,6 +644,9 @@ static int maze_loop(void)
         break;
     case MAZE_PROCESS_COMMANDS:
         process_commands();
+        break;
+    case MAZE_DRAW_MAP:
+        draw_map();
         break;
     case MAZE_EXIT:
         return 1;
