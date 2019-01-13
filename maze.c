@@ -255,9 +255,7 @@ static int diggable(unsigned char digx, unsigned char digy, unsigned char direct
  */
 static int random_choice(int chance)
 {
-    float r = (float) rand() / (float) RAND_MAX;
-
-    return (r * 1000 < 10 * chance);
+    return (rand() % 10000) < 100 * chance;
 }
 
 static unsigned char left_dir(int direction)
@@ -362,14 +360,26 @@ static unsigned char screen[SCREEN_XDIM][SCREEN_YDIM];
 static void plot_point(int x, int y, void *context)
 {
     unsigned char *screen = context;
+
     screen[SCREEN_YDIM * x + y] = '#';
 }
 
-static void draw_object(maze_point_t drawing[], int npoints, float scale)
+/* These integer ratios approximate 0.4, 0.4 * 0.8, 0.4 * 0.8^2, 0.4 * 0.8^3, 0.4 * 0.8^4, ...
+ * which are used to approximate appropriate perspective scaling (reduction in size as viewing
+ * distance linearly increases stepwise) while avoiding floating point operations.
+ */
+static const int drawing_scale_numerator[] = { 4, 32, 27, 204, 163, 131, 104, 84 };
+static const int drawing_scale_denom[] = { 10, 100, 100, 1000, 1000, 1000, 1000, 1000 };
+
+static void draw_object(maze_point_t drawing[], int npoints, int scale_index)
 {
     int i;
     static const int xcenter = SCREEN_XDIM / 2;
     static const int ycenter = SCREEN_YDIM / 2;
+    int num, denom;
+
+    num = drawing_scale_numerator[scale_index];
+    denom = drawing_scale_denom[scale_index];
 
     for (i = 0; i < npoints - 1;) {
         if (drawing[i].x == -128) {
@@ -380,8 +390,8 @@ static void draw_object(maze_point_t drawing[], int npoints, float scale)
             i+=2;
             continue;
         }
-        bline(xcenter + drawing[i].x * scale, ycenter + drawing[i].y * scale,
-            xcenter + drawing[i + 1].x * scale, ycenter + drawing[i + 1].y * scale, plot_point, screen);
+        bline(xcenter + (drawing[i].x * num) / denom, ycenter + (drawing[i].y * num) / denom,
+            xcenter + (drawing[i + 1].x * num) / denom, ycenter + (drawing[i + 1].y * num) / denom, plot_point, screen);
         i++;
     }
 }
@@ -473,16 +483,6 @@ static void process_commands(void)
     maze_program_state = MAZE_RENDER;
 }
 
-static const float drawing_scale[] = {
-    0.4,
-    0.4 * 0.8,
-    0.4 * 0.8 * 0.8,
-    0.4 * 0.8 * 0.8 * 0.8,
-    0.4 * 0.8 * 0.8 * 0.8 * 0.8,
-    0.4 * 0.8 * 0.8 * 0.8 * 0.8 * 0.8,
-    0.4 * 0.8 * 0.8 * 0.8 * 0.8 * 0.8 * 0.8,
-};
-
 static void draw_objects(void)
 {
     int a, b, i, x[2], y[2], s, otype, npoints;
@@ -516,14 +516,14 @@ static void draw_objects(void)
             s = abs(maze_object[i].y - player.y);
             if (s >= maze_object_distance_limit)
                 goto next_object;
-            draw_object(drawing, npoints, drawing_scale[s]);
+            draw_object(drawing, npoints, s);
         }
     } else if (y[0] == y[1]) {
         if (maze_object[i].y == y[0] && maze_object[i].x >= x[a] && maze_object[i].x <= x[b]) {
             s = abs(maze_object[i].x - player.x);
             if (s >= maze_object_distance_limit)
                 goto next_object;
-            draw_object(drawing, npoints, drawing_scale[s]);
+            draw_object(drawing, npoints, s);
         }
     }
 
