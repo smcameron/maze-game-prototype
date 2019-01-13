@@ -221,30 +221,30 @@ static unsigned char normalize_direction(int direction)
     return direction;
 }
 
-/* Last dug oldx, oldy, consider whether digx, digy is diggable.  */
-static int diggable(unsigned char digx, unsigned char digy, unsigned char oldx, unsigned char oldy, unsigned char direction)
+/* Consider whether digx, digy is diggable.  */
+static int diggable(unsigned char digx, unsigned char digy, unsigned char direction)
 {
-    int i;
+    int i, startdir, enddir;
 
     if (out_of_bounds(digx, digy)) /* not diggable if out of bounds */
         return 0;
 
-    for (i = 0; i < 8; i++) {
+
+    startdir = normalize_direction(((int) direction) - 2);
+    enddir = normalize_direction(((int) direction) + 3);
+
+    i = startdir;
+    while (i != enddir) {
         unsigned char x, y;
 
         x = digx + xoff[i];
         y = digy + yoff[i];
 
-        if (xoff[direction] && (xoff[i] != xoff[direction] || xoff[i] == 0))
-            continue;
-        if (yoff[direction] && (yoff[i] != yoff[direction] || yoff[i] == 0))
-            continue;
-        if (x == oldx && y == oldy) /* Ignore oldx, oldy */
-            continue;
         if (out_of_bounds(x, y)) /* We do not dig at the edge of the maze */
             return 0;
         if (is_passage(x, y)) /* do not connect to other passages */
             return 0;
+        i = normalize_direction(i + 1);
     }
     return 1;
 }
@@ -304,7 +304,7 @@ static void generate_maze(void)
         add_object(*x, *y);
     nx = *x + xoff[*d];
     ny = *y + yoff[*d];
-    if (!diggable(nx, ny, *x, *y, *d))
+    if (!diggable(nx, ny, *d))
         maze_stack_pop();
     if (maze_stack_ptr == MAZE_STACK_EMPTY) {
         maze_program_state = MAZE_PRINT;
@@ -329,7 +329,7 @@ static void generate_maze(void)
     }
     if (random_choice(BRANCH_CHANCE)) {
         int new_dir = random_choice(50) ? right_dir(*d) : left_dir(*d);
-        if (diggable(nx, ny, *x, *y, new_dir))
+        if (diggable(xoff[new_dir] + nx, yoff[new_dir] + ny, new_dir))
             maze_stack_push(nx, ny, (unsigned char) new_dir);
     }
 }
