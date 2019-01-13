@@ -31,6 +31,15 @@ static int current_drawing_object = 0;
 /* Dimensions of generated maze */
 #define XDIM 24
 #define YDIM 24
+#define NLEVELS 3
+
+static int maze_random_seed[NLEVELS] = { 0 };
+static int maze_current_level = 0;
+
+#define MAZE_PLACE_PLAYER_DO_NOT_MOVE 0
+#define MAZE_PLACE_PLAYER_BENEATH_UP_LADDER 1
+#define MAZE_PLACE_PLAYER_ABOVE_DOWN_LADDER 2
+static int maze_player_initial_placement = MAZE_PLACE_PLAYER_BENEATH_UP_LADDER;
 
 /* Array to hold the maze.  Each square of the maze is represented by 1 bit.
  * 0 means solid rock, 1 means empty passage.
@@ -75,7 +84,9 @@ enum maze_object_category {
     MAZE_OBJECT_KEY,
     MAZE_OBJECT_POTION,
     MAZE_OBJECT_ARMOR,
-    MAZE_OBJECT_TREASURE
+    MAZE_OBJECT_TREASURE,
+    MAZE_OBJECT_DOWN_LADDER,
+    MAZE_OBJECT_UP_LADDER
 };
 
 typedef struct maze_object_template {
@@ -123,7 +134,13 @@ static maze_point_t shield_points[] =
 static maze_point_t sword_points[] =
 #include "sword_points.h"
 
-#define MAZE_NOBJECT_TYPES 11
+static maze_point_t up_ladder_points[] =
+#include "up_ladder_points.h"
+
+static maze_point_t down_ladder_points[] =
+#include "down_ladder_points.h"
+
+#define MAZE_NOBJECT_TYPES 13
 static int nobject_types = MAZE_NOBJECT_TYPES;
 
 #define MAX_MAZE_OBJECTS 30
@@ -141,6 +158,10 @@ static maze_object_template_t maze_object_template[] = {
     { "POTION", MAZE_OBJECT_POTION, potion_points, ARRAYSIZE(potion_points), },
     { "SHIELD", MAZE_OBJECT_ARMOR, shield_points, ARRAYSIZE(shield_points), },
     { "SWORD", MAZE_OBJECT_WEAPON, sword_points, ARRAYSIZE(sword_points), },
+#define DOWN_LADDER 11
+    { "LADDER", MAZE_OBJECT_DOWN_LADDER, down_ladder_points, ARRAYSIZE(down_ladder_points), },
+#define UP_LADDER 12
+    { "LADDER", MAZE_OBJECT_UP_LADDER, up_ladder_points, ARRAYSIZE(down_ladder_points), },
 };
 
 static maze_object_t maze_object[MAX_MAZE_OBJECTS];
@@ -162,6 +183,7 @@ static void maze_stack_push(unsigned char x, unsigned char y, unsigned char dire
         /* Oops, we blew our stack.  Start over */
         printf("Oops, stack blew... size = %d\n", maze_stack_ptr);
         maze_program_state = MAZE_INIT;
+        maze_random_seed[maze_current_level] = rand();
         return;
     }
     if (max_maze_stack_depth < maze_stack_ptr)
@@ -179,6 +201,7 @@ static void maze_stack_pop(void)
 /* Initial program state to kick off maze generation */
 static void maze_init(void)
 {
+    srand(maze_random_seed[maze_current_level]);
     player.x = XDIM / 2;
     player.y = YDIM - 2;
     player.direction = 0;
@@ -283,14 +306,45 @@ static unsigned char right_dir(int direction)
     return normalize_direction(direction + 2);
 }
 
-static void add_object(int x, int y)
+static void add_ladder(int ladder_type)
 {
-    if (nmaze_objects >= MAX_MAZE_OBJECTS)
+    int x, y;
+
+    do {
+        x = rand() % XDIM;
+        y = rand() % YDIM;
+    } while (!is_passage(x, y));
+
+    maze_object[nmaze_objects].x = x;
+    maze_object[nmaze_objects].y = y;
+    maze_object[nmaze_objects].type = ladder_type;
+
+    if ((maze_player_initial_placement == MAZE_PLACE_PLAYER_BENEATH_UP_LADDER &&
+        ladder_type == UP_LADDER) ||
+        (maze_player_initial_placement == MAZE_PLACE_PLAYER_ABOVE_DOWN_LADDER &&
+        ladder_type == DOWN_LADDER)) {
+        player.x = x;
+        player.y = y;
+    }
+
+    nmaze_objects++;
+}
+
+static void add_ladders(int level)
+{
+    if (level < NLEVELS - 1)
+        add_ladder(DOWN_LADDER);
+    add_ladder(UP_LADDER);
+}
+
+static void add_random_object(int x, int y)
+{
+    if (nmaze_objects >= MAX_MAZE_OBJECTS - 2) /* Leave 2 for ladders */
         return;
 
     maze_object[nmaze_objects].x = x;
     maze_object[nmaze_objects].y = y;
-    maze_object[nmaze_objects].type = rand() % nobject_types;
+    maze_object[nmaze_objects].type = rand() % (nobject_types - 2); /* minus 2 to exclude ladders */
     nmaze_objects++;
 }
 
@@ -314,7 +368,7 @@ static void generate_maze(void)
     dig_maze_square(*x, *y);
 
     if (random_choice(OBJECT_CHANCE))
-        add_object(*x, *y);
+        add_random_object(*x, *y);
     nx = *x + xoff[*d];
     ny = *y + yoff[*d];
     if (!diggable(nx, ny, *d))
@@ -324,7 +378,9 @@ static void generate_maze(void)
         if (maze_size < min_maze_size()) {
             printf("maze too small, starting over\n");
             maze_program_state = MAZE_INIT;
+            maze_random_seed[maze_current_level] = rand();
         }
+        add_ladders(0);
         return;
     }
     *x = nx;
@@ -336,7 +392,9 @@ static void generate_maze(void)
             if (maze_size < min_maze_size()) {
                 printf("maze too small, starting over\n");
                 maze_program_state = MAZE_INIT;
+                maze_random_seed[maze_current_level] = rand();
             }
+            add_ladders(0);
             return;
         }
     }
@@ -480,11 +538,56 @@ static void render_screen(void)
     maze_program_state = MAZE_PROCESS_COMMANDS;
 }
 
+static int go_up_or_down(int direction)
+{
+    int i, ok, ladder_type, placement;
+
+    if (direction > 0) {
+        ladder_type = DOWN_LADDER;
+        placement = MAZE_PLACE_PLAYER_BENEATH_UP_LADDER;
+    } else {
+        ladder_type = UP_LADDER;
+        placement = MAZE_PLACE_PLAYER_ABOVE_DOWN_LADDER;
+    }
+
+    ok = 0;
+    /* Check if we are facing a down ladder */
+    for (i = 0; i < nmaze_objects; i++) {
+        if (maze_object[i].type == ladder_type &&
+            maze_object[i].x == player.x && maze_object[i].y == player.y) {
+                ok = 1;
+                break;
+        }
+    }
+    if (!ok)
+        return 0;
+
+    if (direction > 0 && maze_current_level >= NLEVELS - 1)
+        return 0;
+    else if (direction < 0 && maze_current_level <= 0)
+        return 0;
+
+    maze_current_level += direction;
+    maze_program_state = MAZE_INIT;
+    maze_player_initial_placement = placement;
+    return 1;
+}
+
+static int go_up(void)
+{
+    return go_up_or_down(-1);
+}
+
+static int go_down(void)
+{
+    return go_up_or_down(1);
+}
+
 static void process_commands(void)
 {
     char cmd[100];
     char *n;
-    printf("Enter command [f, l, r, b]:\n");
+    printf("Enter command [f, l, r, b, u, d]:\n");
     n = fgets(cmd, sizeof(cmd), stdin);
 
     if (!n) {
@@ -514,7 +617,13 @@ static void process_commands(void)
         } else if (strncmp(cmd, "m", 1) == 0) {
             maze_program_state = MAZE_DRAW_MAP;
             return;
-        } else printf("Bad command. Use f, l, r\n");
+        } else if (strncmp(cmd, "d", 1) == 0) {
+            if (go_down())
+                return;
+        } else if (strncmp(cmd, "u", 1) == 0) {
+            if (go_up())
+               return;
+        } else printf("Bad command. Use f, l, r, b, u, d\n");
     }
     maze_program_state = MAZE_RENDER;
 }
@@ -674,12 +783,22 @@ static int maze_loop(void)
     return 0;
 }
 
+static void init_seeds()
+{
+    int i;
+
+    for (i = 0; i < NLEVELS; i++)
+        maze_random_seed[i] = rand();
+}
+
 int main(int argc, char *argv[])
 {
     struct timeval tv;
 
     gettimeofday(&tv, NULL);
     srand(tv.tv_usec);
+
+    init_seeds();
 
     do {
         if (maze_loop())
