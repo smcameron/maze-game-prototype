@@ -28,8 +28,8 @@ static int current_drawing_object = 0;
 #define OBJECT_CHANCE 20
 
 /* Dimensions of generated maze */
-#define XDIM (4 * 16)
-#define YDIM 64
+#define XDIM 24
+#define YDIM 24
 
 /* Array to hold the maze.  Each square of the maze is represented by 1 bit.
  * 0 means solid rock, 1 means empty passage.
