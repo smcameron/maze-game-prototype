@@ -13,6 +13,7 @@ enum maze_program_state_t {
     MAZE_PRINT,
     MAZE_RENDER,
     MAZE_OBJECT_RENDER,
+    MAZE_RENDER_ENCOUNTER,
     MAZE_SCREEN_RENDER,
     MAZE_PROCESS_COMMANDS,
     MAZE_DRAW_MAP,
@@ -147,12 +148,12 @@ static int nobject_types = MAZE_NOBJECT_TYPES;
 
 static struct maze_object_template maze_object_template[] = {
     { "SCROLL", MAZE_OBJECT_WEAPON, scroll_points, ARRAYSIZE(scroll_points), },
-    { "DRAGON", MAZE_OBJECT_WEAPON, dragon_points, ARRAYSIZE(dragon_points), },
+    { "DRAGON", MAZE_OBJECT_MONSTER, dragon_points, ARRAYSIZE(dragon_points), },
     { "CHEST", MAZE_OBJECT_TREASURE, chest_points, ARRAYSIZE(chest_points), },
     { "COBRA", MAZE_OBJECT_MONSTER, cobra_points, ARRAYSIZE(cobra_points), },
     { "GRENADE", MAZE_OBJECT_WEAPON, grenade_points, ARRAYSIZE(grenade_points), },
     { "KEY", MAZE_OBJECT_KEY, key_points, ARRAYSIZE(key_points), },
-    { "ORC", MAZE_OBJECT_MONSTER, orc_points, ARRAYSIZE(orc_points), },
+    { "SCARY ORC", MAZE_OBJECT_MONSTER, orc_points, ARRAYSIZE(orc_points), },
     { "PHANTASM", MAZE_OBJECT_MONSTER, phantasm_points, ARRAYSIZE(phantasm_points), },
     { "POTION", MAZE_OBJECT_POTION, potion_points, ARRAYSIZE(potion_points), },
     { "SHIELD", MAZE_OBJECT_ARMOR, shield_points, ARRAYSIZE(shield_points), },
@@ -559,6 +560,44 @@ static int go_down(void)
     return go_up_or_down(1);
 }
 
+static char *encounter_text = "x";
+static char *encounter_name = "";
+
+static void check_for_encounter(void)
+{
+    int i;
+
+    encounter_text = "x";
+    for (i = 0; i < nmaze_objects; i++) {
+        if (maze_object[i].x == player.x && maze_object[i].y == player.y) {
+            switch(maze_object_template[maze_object[i].type].category) {
+            case MAZE_OBJECT_MONSTER:
+		encounter_text = "you encounter a";
+                break;
+            case MAZE_OBJECT_WEAPON:
+            case MAZE_OBJECT_KEY:
+            case MAZE_OBJECT_POTION:
+            case MAZE_OBJECT_TREASURE:
+		encounter_text = "you found a";
+                break;
+            case MAZE_OBJECT_ARMOR:
+		encounter_text = "you found";
+                break;
+            case MAZE_OBJECT_DOWN_LADDER:
+		encounter_text = "ladder leads down";
+                break;
+            case MAZE_OBJECT_UP_LADDER:
+		encounter_text = "ladder leads up";
+                break;
+	    default:
+		encounter_text = "you found something";
+                break;
+            }
+            encounter_name = maze_object_template[maze_object[i].type].name;
+        }
+    }
+}
+
 static void process_commands(void)
 {
     int kp;
@@ -579,6 +618,7 @@ static void process_commands(void)
             if (!out_of_bounds(newx, newy) && is_passage(newx, newy)) {
                 player.x = newx;
                 player.y = newy;
+		check_for_encounter();
             }
         }
         break;
@@ -591,6 +631,7 @@ static void process_commands(void)
             if (!out_of_bounds(newx, newy) && is_passage(newx, newy)) {
                 player.x = newx;
                 player.y = newy;
+		check_for_encounter();
             }
         }
         break;
@@ -668,7 +709,7 @@ next_object:
     current_drawing_object++;
     if (current_drawing_object >= nmaze_objects) {
         current_drawing_object = 0;
-        maze_program_state = MAZE_SCREEN_RENDER;
+        maze_program_state = MAZE_RENDER_ENCOUNTER;
     }
 }
 
@@ -741,6 +782,19 @@ static void render_maze(void)
    }
 }
 
+static void draw_encounter(void)
+{
+    maze_program_state = MAZE_SCREEN_RENDER;
+
+    if (encounter_text[0] == 'x')
+        return;
+
+    FbMove(10, 100);
+    FbWriteLine(encounter_text);
+    FbMove(10, 110);
+    FbWriteLine(encounter_name);
+}
+
 static int maze_loop(void)
 {
     switch (maze_program_state) {
@@ -758,6 +812,9 @@ static int maze_loop(void)
         break;
     case MAZE_OBJECT_RENDER:
         draw_objects();
+        break;
+    case MAZE_RENDER_ENCOUNTER:
+        draw_encounter();
         break;
     case MAZE_SCREEN_RENDER:
         FbSwapBuffers();
