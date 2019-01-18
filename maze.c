@@ -259,6 +259,16 @@ static unsigned char normalize_direction(int direction)
     return direction;
 }
 
+static unsigned char left_dir(int direction)
+{
+    return normalize_direction(direction - 2);
+}
+
+static unsigned char right_dir(int direction)
+{
+    return normalize_direction(direction + 2);
+}
+
 /* Consider whether digx, digy is diggable.  */
 static int diggable(unsigned char digx, unsigned char digy, unsigned char direction)
 {
@@ -268,8 +278,8 @@ static int diggable(unsigned char digx, unsigned char digy, unsigned char direct
         return 0;
 
 
-    startdir = normalize_direction(((int) direction) - 2);
-    enddir = normalize_direction(((int) direction) + 3);
+    startdir = left_dir(direction);
+    enddir = normalize_direction(right_dir(direction) + 1);
 
     i = startdir;
     while (i != enddir) {
@@ -294,16 +304,6 @@ static int diggable(unsigned char digx, unsigned char digy, unsigned char direct
 static int random_choice(int chance)
 {
     return (rand() % 10000) < 100 * chance;
-}
-
-static unsigned char left_dir(int direction)
-{
-    return normalize_direction(direction - 2);
-}
-
-static unsigned char right_dir(int direction)
-{
-    return normalize_direction(direction + 2);
 }
 
 static void add_ladder(int ladder_type)
@@ -595,10 +595,10 @@ static void process_commands(void)
         }
         break;
     case 'a':
-        player.direction = normalize_direction(player.direction - 2);
+        player.direction = left_dir(player.direction);
         break;
     case 'd':
-        player.direction = normalize_direction(player.direction + 2);
+        player.direction = right_dir(player.direction);
         break;
     case 'm':
         maze_program_state = MAZE_DRAW_MAP;
