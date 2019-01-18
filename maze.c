@@ -456,13 +456,18 @@ static void FbVerticalLine(unsigned char x1, unsigned char y1, unsigned char x2,
     for (y = y1; y < y2; y++)
         plot_point(x1, y, screen);
 }
+
+static void FbClear(void)
+{
+    memset(screen, ' ', SCREEN_XDIM * SCREEN_YDIM);
+}
 #endif
 
 static void draw_map()
 {
     int x, y;
 
-    memset(screen, ' ', SCREEN_XDIM * SCREEN_YDIM);
+    FbClear();
     for (x = 0; x < XDIM; x++) {
         for (y = 0; y < YDIM; y++) {
             if (x == player.x && y == player.y) {
@@ -710,7 +715,7 @@ static void render_maze(void)
     int hit_back_wall = 0;
 
     if (maze_render_step == 0) {
-        memset(screen, ' ', SCREEN_XDIM * SCREEN_YDIM);
+        FbClear();
         maze_object_distance_limit = steps;
     }
 
