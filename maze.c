@@ -573,27 +573,29 @@ static void check_for_encounter(void)
             switch(maze_object_template[maze_object[i].type].category) {
             case MAZE_OBJECT_MONSTER:
 		encounter_text = "you encounter a";
+                encounter_name = maze_object_template[maze_object[i].type].name;
                 break;
             case MAZE_OBJECT_WEAPON:
             case MAZE_OBJECT_KEY:
             case MAZE_OBJECT_POTION:
             case MAZE_OBJECT_TREASURE:
-		encounter_text = "you found a";
-                break;
             case MAZE_OBJECT_ARMOR:
-		encounter_text = "you found";
+		encounter_text = "you found a";
+                encounter_name = maze_object_template[maze_object[i].type].name;
                 break;
             case MAZE_OBJECT_DOWN_LADDER:
-		encounter_text = "ladder leads down";
+		encounter_text = "a ladder";
+		encounter_name = "leads down";
                 break;
             case MAZE_OBJECT_UP_LADDER:
-		encounter_text = "ladder leads up";
+		encounter_text = "a ladder";
+		encounter_name = "leads up";
                 break;
 	    default:
 		encounter_text = "you found something";
+                encounter_name = maze_object_template[maze_object[i].type].name;
                 break;
             }
-            encounter_name = maze_object_template[maze_object[i].type].name;
         }
     }
 }
