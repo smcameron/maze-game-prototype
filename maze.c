@@ -50,33 +50,31 @@ static unsigned char maze_visited[XDIM >> 3][YDIM] = { { 0 }, };
 /*
  * Stack structure used when generating maze to remember where we left off.
  */
-typedef struct maze_gen_stack_element {
+static struct maze_gen_stack_element {
     unsigned char x, y, direction;
-} maze_gen_stack_element_t;
-static maze_gen_stack_element_t maze_stack[50];
+} maze_stack[50];
 #define MAZE_STACK_EMPTY -1
 static short maze_stack_ptr = MAZE_STACK_EMPTY;
 static int maze_size = 0;
 static int max_maze_stack_depth = 0;
 static int generation_iterations = 0;
 
-typedef struct player_state {
+static struct player_state {
     unsigned char x, y, direction;
-} player_state_t;
-static player_state_t player;
+} player;
 
-typedef struct point {
+struct point {
     signed char x, y;
-} maze_point_t;
+};
 
-typedef union maze_object_type_specific_data {
+union maze_object_type_specific_data {
     struct {
         unsigned char hitpoints;
     } monster;
     struct {
         signed char health_impact;
     } potion;
-} maze_object_type_specific_data_t;
+};
 
 enum maze_object_category {
     MAZE_OBJECT_MONSTER,
@@ -89,55 +87,55 @@ enum maze_object_category {
     MAZE_OBJECT_UP_LADDER
 };
 
-typedef struct maze_object_template {
+struct maze_object_template {
     char name[20];
     enum maze_object_category category;
-    maze_point_t *drawing;
+    struct point *drawing;
     int npoints;
-} maze_object_template_t;
+};
 
-typedef struct object {
+struct maze_object {
     unsigned char x, y;
     unsigned char type;
-} maze_object_t;
+};
 
-static maze_point_t scroll_points[] =
+static struct point scroll_points[] =
 #include "scroll_points.h"
 
-static maze_point_t dragon_points[] =
+static struct point dragon_points[] =
 #include "dragon_points.h"
 
-static maze_point_t chest_points[] =
+static struct point chest_points[] =
 #include "chest_points.h"
 
-static maze_point_t cobra_points[] =
+static struct point cobra_points[] =
 #include "cobra_points.h"
 
-static maze_point_t grenade_points[] =
+static struct point grenade_points[] =
 #include "grenade_points.h"
 
-static maze_point_t key_points[] =
+static struct point key_points[] =
 #include "key_points.h"
 
-static maze_point_t orc_points[] =
+static struct point orc_points[] =
 #include "orc_points.h"
 
-static maze_point_t phantasm_points[] =
+static struct point phantasm_points[] =
 #include "phantasm_points.h"
 
-static maze_point_t potion_points[] =
+static struct point potion_points[] =
 #include "potion_points.h"
 
-static maze_point_t shield_points[] =
+static struct point shield_points[] =
 #include "shield_points.h"
 
-static maze_point_t sword_points[] =
+static struct point sword_points[] =
 #include "sword_points.h"
 
-static maze_point_t up_ladder_points[] =
+static struct point up_ladder_points[] =
 #include "up_ladder_points.h"
 
-static maze_point_t down_ladder_points[] =
+static struct point down_ladder_points[] =
 #include "down_ladder_points.h"
 
 #define MAZE_NOBJECT_TYPES 13
@@ -146,7 +144,7 @@ static int nobject_types = MAZE_NOBJECT_TYPES;
 #define MAX_MAZE_OBJECTS 30
 #define ARRAYSIZE(x) (sizeof((x)) / sizeof((x)[0]))
 
-static maze_object_template_t maze_object_template[] = {
+static struct maze_object_template maze_object_template[] = {
     { "SCROLL", MAZE_OBJECT_WEAPON, scroll_points, ARRAYSIZE(scroll_points), },
     { "DRAGON", MAZE_OBJECT_WEAPON, dragon_points, ARRAYSIZE(dragon_points), },
     { "CHEST", MAZE_OBJECT_TREASURE, chest_points, ARRAYSIZE(chest_points), },
@@ -164,7 +162,7 @@ static maze_object_template_t maze_object_template[] = {
     { "LADDER", MAZE_OBJECT_UP_LADDER, up_ladder_points, ARRAYSIZE(down_ladder_points), },
 };
 
-static maze_object_t maze_object[MAX_MAZE_OBJECTS];
+static struct maze_object maze_object[MAX_MAZE_OBJECTS];
 static int nmaze_objects = 0;
 
 static int min_maze_size(void)
@@ -488,7 +486,7 @@ static void draw_map()
 static const int drawing_scale_numerator[] = { 4, 32, 27, 204, 163, 131, 104, 84 };
 static const int drawing_scale_denom[] = { 10, 100, 100, 1000, 1000, 1000, 1000, 1000 };
 
-static void draw_object(maze_point_t drawing[], int npoints, int scale_index)
+static void draw_object(struct point drawing[], int npoints, int scale_index)
 {
     int i;
     static const int xcenter = SCREEN_XDIM / 2;
@@ -654,7 +652,7 @@ static void process_commands(void)
 static void draw_objects(void)
 {
     int a, b, i, x[2], y[2], s, otype, npoints;
-    maze_point_t *drawing;
+    struct point *drawing;
 
     a = 0;
     b = 1;
