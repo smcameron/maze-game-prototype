@@ -9,4 +9,9 @@ void FbLine(unsigned char x1, unsigned char y1, unsigned char x2, unsigned char 
 void FbHorizontalLine(unsigned char x1, unsigned char y1, unsigned char x2, unsigned char y2);
 void FbVerticalLine(unsigned char x1, unsigned char y1, unsigned char x2, unsigned char y2);
 void FbClear(void);
+void restore_original_input_mode(void);
+void set_nonblocking_input_mode(void);
+int wait_for_keypress(void);
+int get_keypress(void);
+
 

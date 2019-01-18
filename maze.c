@@ -561,15 +561,18 @@ static int go_down(void)
 
 static void process_commands(void)
 {
-    char cmd[100];
-    char *n;
-    printf("Enter command [f, l, r, b, u, d]:\n");
-    n = fgets(cmd, sizeof(cmd), stdin);
+    int kp;
 
-    if (!n) {
+    wait_for_keypress();
+    kp = get_keypress();
+    if (kp < 0) {
         maze_program_state = MAZE_EXIT;
-    } else {
-        if (strncmp(cmd, "f", 1) == 0) {
+        return;
+    }
+
+    switch (kp) {
+    case 'w':
+        {
             int newx, newy;
             newx = player.x + xoff[player.direction];
             newy = player.y + yoff[player.direction];
@@ -577,7 +580,10 @@ static void process_commands(void)
                 player.x = newx;
                 player.y = newy;
             }
-        } else if (strncmp(cmd, "b", 1) == 0) {
+        }
+        break;
+    case 's':
+        {
             int newx, newy, backwards;
             backwards = normalize_direction(player.direction + 4);
             newx = player.x + xoff[backwards];
@@ -586,20 +592,30 @@ static void process_commands(void)
                 player.x = newx;
                 player.y = newy;
             }
-        } else if (strncmp(cmd, "l", 1) == 0) {
-            player.direction = normalize_direction(player.direction - 2);
-        } else if (strncmp(cmd, "r", 1) == 0) {
-            player.direction = normalize_direction(player.direction + 2);
-        } else if (strncmp(cmd, "m", 1) == 0) {
-            maze_program_state = MAZE_DRAW_MAP;
+        }
+        break;
+    case 'a':
+        player.direction = normalize_direction(player.direction - 2);
+        break;
+    case 'd':
+        player.direction = normalize_direction(player.direction + 2);
+        break;
+    case 'm':
+        maze_program_state = MAZE_DRAW_MAP;
+        return;
+    case 'c':
+        if (go_down())
             return;
-        } else if (strncmp(cmd, "d", 1) == 0) {
-            if (go_down())
-                return;
-        } else if (strncmp(cmd, "u", 1) == 0) {
-            if (go_up())
-               return;
-        } else printf("Bad command. Use f, l, r, b, u, d\n");
+        break;
+    case 'e':
+        if (go_up())
+           return;
+        break;
+    case 'q':
+        maze_program_state = MAZE_EXIT;
+        return;
+    default:
+        break;
     }
     maze_program_state = MAZE_RENDER;
 }
