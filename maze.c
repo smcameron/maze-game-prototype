@@ -563,13 +563,14 @@ static int go_down(void)
 static char *encounter_text = "x";
 static char *encounter_name = "";
 
-static void check_for_encounter(void)
+static void check_for_encounter(unsigned char newx, unsigned char newy)
 {
     int i;
 
     encounter_text = "x";
     for (i = 0; i < nmaze_objects; i++) {
-        if (maze_object[i].x == player.x && maze_object[i].y == player.y) {
+	/* If we are just about to move onto a square where an object is... */
+        if (maze_object[i].x == newx && maze_object[i].y == newy) {
             switch(maze_object_template[maze_object[i].type].category) {
             case MAZE_OBJECT_MONSTER:
 		encounter_text = "you encounter a";
@@ -597,6 +598,42 @@ static void check_for_encounter(void)
                 break;
             }
         }
+	/* If we are just about to move off of a square where an object is... */
+        if (maze_object[i].x == player.x && maze_object[i].y == player.y) {
+            switch(maze_object_template[maze_object[i].type].category) {
+            case MAZE_OBJECT_WEAPON:
+            case MAZE_OBJECT_KEY:
+            case MAZE_OBJECT_POTION:
+            case MAZE_OBJECT_TREASURE:
+            case MAZE_OBJECT_ARMOR:
+               maze_object[i].x = 255; /* Take the object */
+               break;
+            default:
+               break;
+            }
+	}
+    }
+}
+
+static void maze_button_pressed(void)
+{
+    int i;
+
+    for (i = 0; i < nmaze_objects; i++) {
+        if (player.x == maze_object[i].x && player.y == maze_object[i].y) {
+            switch(maze_object_template[maze_object[i].type].category) {
+            case MAZE_OBJECT_DOWN_LADDER:
+		 printf("going down\n");
+                 go_down();
+                 return;
+            case MAZE_OBJECT_UP_LADDER:
+		 printf("going up\n");
+                 go_up();
+                 return;
+            default:
+                 break;
+            }
+	}
     }
 }
 
@@ -618,9 +655,9 @@ static void process_commands(void)
             newx = player.x + xoff[player.direction];
             newy = player.y + yoff[player.direction];
             if (!out_of_bounds(newx, newy) && is_passage(newx, newy)) {
+		check_for_encounter(newx, newy);
                 player.x = newx;
                 player.y = newy;
-		check_for_encounter();
             }
         }
         break;
@@ -631,9 +668,9 @@ static void process_commands(void)
             newx = player.x + xoff[backwards];
             newy = player.y + yoff[backwards];
             if (!out_of_bounds(newx, newy) && is_passage(newx, newy)) {
+		check_for_encounter(newx, newy);
                 player.x = newx;
                 player.y = newy;
-		check_for_encounter();
             }
         }
         break;
@@ -646,6 +683,9 @@ static void process_commands(void)
     case 'm':
         maze_program_state = MAZE_DRAW_MAP;
         return;
+    case ' ':
+        maze_button_pressed();
+        break;
     case 'c':
         if (go_down())
             return;
@@ -660,7 +700,8 @@ static void process_commands(void)
     default:
         break;
     }
-    maze_program_state = MAZE_RENDER;
+    if (maze_program_state == MAZE_PROCESS_COMMANDS)
+        maze_program_state = MAZE_RENDER;
 }
 
 static void draw_objects(void)
