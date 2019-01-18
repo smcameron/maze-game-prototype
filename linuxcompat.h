@@ -13,5 +13,7 @@ void restore_original_input_mode(void);
 void set_nonblocking_input_mode(void);
 int wait_for_keypress(void);
 int get_keypress(void);
+void FbMove(unsigned char x, unsigned char y);
+void FbWriteLine(char *s);
 
 
