@@ -437,6 +437,29 @@ static void plot_point(int x, int y, void *context)
     screen[SCREEN_YDIM * x + y] = '#';
 }
 
+#ifdef __linux__
+static void FbLine(unsigned char x1, unsigned char y1, unsigned char x2, unsigned char y2)
+{
+    bline(x1, y1, x2, y2, plot_point, screen);
+}
+
+static void FbHorizontalLine(unsigned char x1, unsigned char y1, unsigned char x2, unsigned char y2)
+{
+    unsigned char x;
+
+    for (x = x1; x < x2; x++)
+        plot_point(x, y1, screen);
+}
+
+static void FbVerticalLine(unsigned char x1, unsigned char y1, unsigned char x2, unsigned char y2)
+{
+    unsigned char y;
+
+    for (y = y1; y < y2; y++)
+        plot_point(x1, y, screen);
+}
+#endif
+
 static void draw_map()
 {
     int x, y;
@@ -445,13 +468,13 @@ static void draw_map()
     for (x = 0; x < XDIM; x++) {
         for (y = 0; y < YDIM; y++) {
             if (x == player.x && y == player.y) {
-                bline(x * 3, y * 3, x * 3, y * 3, plot_point, screen);
+                FbLine(x * 3, y * 3, x * 3, y * 3);
                 continue;
             }
             if (is_visited(x, y)) {
-                bline(x * 3 - 1, y * 3 - 1, x * 3 + 1, y * 3 - 1, plot_point, screen);
-                bline(x * 3 - 1, y * 3, x * 3 + 1, y * 3, plot_point, screen);
-                bline(x * 3 - 1, y * 3 + 1, x * 3 + 1, y * 3 + 1, plot_point, screen);
+                FbHorizontalLine(x * 3 - 1, y * 3 - 1, x * 3 + 1, y * 3 - 1);
+                FbHorizontalLine(x * 3 - 1, y * 3, x * 3 + 1, y * 3);
+                FbHorizontalLine(x * 3 - 1, y * 3 + 1, x * 3 + 1, y * 3 + 1);
             }
        }
     }
@@ -484,46 +507,46 @@ static void draw_object(maze_point_t drawing[], int npoints, int scale_index)
             i+=2;
             continue;
         }
-        bline(xcenter + (drawing[i].x * num) / denom, ycenter + (drawing[i].y * num) / denom,
-            xcenter + (drawing[i + 1].x * num) / denom, ycenter + (drawing[i + 1].y * num) / denom, plot_point, screen);
+        FbLine(xcenter + (drawing[i].x * num) / denom, ycenter + (drawing[i].y * num) / denom,
+            xcenter + (drawing[i + 1].x * num) / denom, ycenter + (drawing[i + 1].y * num) / denom);
         i++;
     }
 }
 
 static void draw_left_passage(int start, int scale)
 {
-    bline(start, start, start, SCREEN_YDIM - 1 - start, plot_point, screen);
-    bline(start, start + scale, start + scale, start + scale, plot_point, screen);
-    bline(start, SCREEN_YDIM - 1 - (start + scale), start + scale, SCREEN_YDIM - 1 - (start + scale), plot_point, screen);
+    FbVerticalLine(start, start, start, SCREEN_YDIM - 1 - start);
+    FbHorizontalLine(start, start + scale, start + scale, start + scale);
+    FbHorizontalLine(start, SCREEN_YDIM - 1 - (start + scale), start + scale, SCREEN_YDIM - 1 - (start + scale));
 }
 
 static void draw_right_passage(int start, int scale)
 {
-    bline(SCREEN_XDIM - 1 - start, start, SCREEN_XDIM - 1 - start, SCREEN_YDIM - 1 - start, plot_point, screen);
-    bline(SCREEN_XDIM - 1 - start, start + scale, SCREEN_XDIM - 1 - (start + scale), start + scale, plot_point, screen);
-    bline(SCREEN_XDIM - 1 - start, SCREEN_YDIM - 1 - (start + scale), SCREEN_XDIM - 1 - (start + scale), SCREEN_YDIM - 1 - (start + scale), plot_point, screen);
+    FbVerticalLine(SCREEN_XDIM - 1 - start, start, SCREEN_XDIM - 1 - start, SCREEN_YDIM - 1 - start);
+    FbHorizontalLine(SCREEN_XDIM - 1 - (start + scale), start + scale, SCREEN_XDIM - 1 - start, start + scale);
+    FbHorizontalLine(SCREEN_XDIM - 1 - (start + scale), SCREEN_YDIM - 1 - (start + scale), SCREEN_XDIM - 1 - start, SCREEN_YDIM - 1 - (start + scale));
 }
 
 static void draw_left_wall(int start, int scale)
 {
-    bline(start, start, start, SCREEN_YDIM - 1 - start, plot_point, screen);
-    bline(start, start, start + scale, start + scale, plot_point, screen);
-    bline(start, SCREEN_YDIM - 1 - start, start + scale, SCREEN_YDIM - 1 - (start + scale), plot_point, screen);
+    FbVerticalLine(start, start, start, SCREEN_YDIM - 1 - start);
+    FbLine(start, start, start + scale, start + scale);
+    FbLine(start, SCREEN_YDIM - 1 - start, start + scale, SCREEN_YDIM - 1 - (start + scale));
 }
 
 static void draw_right_wall(int start, int scale)
 {
-    bline(SCREEN_XDIM - 1 - start, start, SCREEN_XDIM - 1 - start, SCREEN_YDIM - 1 - start, plot_point, screen);
-    bline(SCREEN_XDIM - 1 - start, start, SCREEN_XDIM - 1 - (start + scale), start + scale, plot_point, screen);
-    bline(SCREEN_XDIM - 1 - start, SCREEN_YDIM - 1 - start, SCREEN_XDIM - 1 - (start + scale), SCREEN_YDIM - 1 - (start + scale), plot_point, screen);
+    FbVerticalLine(SCREEN_XDIM - 1 - start, start, SCREEN_XDIM - 1 - start, SCREEN_YDIM - 1 - start);
+    FbLine(SCREEN_XDIM - 1 - start, start, SCREEN_XDIM - 1 - (start + scale), start + scale);
+    FbLine(SCREEN_XDIM - 1 - start, SCREEN_YDIM - 1 - start, SCREEN_XDIM - 1 - (start + scale), SCREEN_YDIM - 1 - (start + scale));
 }
 
 static void draw_forward_wall(int start, int scale)
 {
-    bline(start, start, start, SCREEN_YDIM - 1 - start, plot_point, screen);
-    bline(SCREEN_XDIM - 1 - start, start, SCREEN_XDIM - 1 - start, SCREEN_YDIM - 1 - start, plot_point, screen);
-    bline(start, start, SCREEN_XDIM - 1 - start, start, plot_point, screen);
-    bline(start, SCREEN_YDIM - 1 - start, SCREEN_XDIM - 1 - start, SCREEN_YDIM - 1 - start, plot_point, screen);
+    FbVerticalLine(start, start, start, SCREEN_YDIM - 1 - start);
+    FbVerticalLine(SCREEN_XDIM - 1 - start, start, SCREEN_XDIM - 1 - start, SCREEN_YDIM - 1 - start);
+    FbHorizontalLine(start, start, SCREEN_XDIM - 1 - start, start);
+    FbHorizontalLine(start, SCREEN_YDIM - 1 - start, SCREEN_XDIM - 1 - start, SCREEN_YDIM - 1 - start);
 }
 
 static void render_screen(void)
@@ -701,7 +724,6 @@ static void render_maze(void)
     y = oy;
     if (!out_of_bounds(x, y)) {
         if (!is_passage(x, y)) {
-            // draw_forward_wall(maze_start + maze_scale, (maze_scale * 80) / 100);
             draw_forward_wall(maze_start, (maze_scale * 80) / 100);
             hit_back_wall = 1;
         } else {

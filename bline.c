@@ -23,7 +23,7 @@
 /*
  * Bresenham's line drawing algorithm.
  */
-void bline(int x1, int y1, int x2, int y2, plotting_function plot_func, void *context)
+void bline(unsigned char x1, unsigned char y1, unsigned char x2, unsigned char y2, plotting_function plot_func, void *context)
 {
 	int dx, dy, i, e;
 	int incx, incy, inc1, inc2;
