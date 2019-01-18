@@ -3,6 +3,7 @@
 #include <sys/time.h> /* for gettimeofday */
 #include <string.h> /* for memset */
 
+#include "linuxcompat.h"
 #include "bline.h"
 
 /* Program states.  Initial state is MAZE_INIT */
@@ -195,12 +196,6 @@ static void maze_stack_pop(void)
 {
     maze_stack_ptr--;
 }
-
-#ifdef __linux__
-static void FbInit(void)
-{
-}
-#endif
 
 /* Initial program state to kick off maze generation */
 static void maze_init(void)
@@ -429,58 +424,6 @@ static void print_maze()
     maze_program_state = MAZE_RENDER;
     printf("maze_size = %d, max stack depth = %d, generation_iterations = %d\n", maze_size, max_maze_stack_depth, generation_iterations);
 }
-
-#define SCREEN_XDIM 132
-#define SCREEN_YDIM 132
-static unsigned char screen[SCREEN_XDIM][SCREEN_YDIM];
-
-
-static void plot_point(int x, int y, void *context)
-{
-    unsigned char *screen = context;
-
-    screen[SCREEN_YDIM * x + y] = '#';
-}
-
-#ifdef __linux__
-static void FbSwapBuffers(void)
-{
-    int x, y;
-
-    for (y = 0; y < SCREEN_YDIM; y++) {
-        for (x = 0; x < SCREEN_XDIM; x++)
-            printf("%c", screen[x][y]);
-        printf("\n");
-    }
-    maze_program_state = MAZE_PROCESS_COMMANDS;
-}
-
-static void FbLine(unsigned char x1, unsigned char y1, unsigned char x2, unsigned char y2)
-{
-    bline(x1, y1, x2, y2, plot_point, screen);
-}
-
-static void FbHorizontalLine(unsigned char x1, unsigned char y1, unsigned char x2, unsigned char y2)
-{
-    unsigned char x;
-
-    for (x = x1; x < x2; x++)
-        plot_point(x, y1, screen);
-}
-
-static void FbVerticalLine(unsigned char x1, unsigned char y1, unsigned char x2, unsigned char y2)
-{
-    unsigned char y;
-
-    for (y = y1; y < y2; y++)
-        plot_point(x1, y, screen);
-}
-
-static void FbClear(void)
-{
-    memset(screen, ' ', SCREEN_XDIM * SCREEN_YDIM);
-}
-#endif
 
 static void draw_map()
 {
@@ -802,6 +745,7 @@ static int maze_loop(void)
         break;
     case MAZE_SCREEN_RENDER:
         FbSwapBuffers();
+        maze_program_state = MAZE_PROCESS_COMMANDS;
         break;
     case MAZE_PROCESS_COMMANDS:
         process_commands();
