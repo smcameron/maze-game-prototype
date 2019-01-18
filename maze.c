@@ -423,8 +423,8 @@ static void print_maze()
     printf("maze_size = %d, max stack depth = %d, generation_iterations = %d\n", maze_size, max_maze_stack_depth, generation_iterations);
 }
 
-#define SCREEN_XDIM 128
-#define SCREEN_YDIM 96
+#define SCREEN_XDIM 132
+#define SCREEN_YDIM 132
 static unsigned char screen[SCREEN_XDIM][SCREEN_YDIM];
 
 
