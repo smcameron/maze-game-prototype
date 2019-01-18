@@ -196,9 +196,16 @@ static void maze_stack_pop(void)
     maze_stack_ptr--;
 }
 
+#ifdef __linux__
+static void FbInit(void)
+{
+}
+#endif
+
 /* Initial program state to kick off maze generation */
 static void maze_init(void)
 {
+    FbInit();
     srand(maze_random_seed[maze_current_level]);
     player.x = XDIM / 2;
     player.y = YDIM - 2;
@@ -436,6 +443,18 @@ static void plot_point(int x, int y, void *context)
 }
 
 #ifdef __linux__
+static void FbSwapBuffers(void)
+{
+    int x, y;
+
+    for (y = 0; y < SCREEN_YDIM; y++) {
+        for (x = 0; x < SCREEN_XDIM; x++)
+            printf("%c", screen[x][y]);
+        printf("\n");
+    }
+    maze_program_state = MAZE_PROCESS_COMMANDS;
+}
+
 static void FbLine(unsigned char x1, unsigned char y1, unsigned char x2, unsigned char y2)
 {
     bline(x1, y1, x2, y2, plot_point, screen);
@@ -550,18 +569,6 @@ static void draw_forward_wall(int start, int scale)
     FbVerticalLine(SCREEN_XDIM - 1 - start, start, SCREEN_XDIM - 1 - start, SCREEN_YDIM - 1 - start);
     FbHorizontalLine(start, start, SCREEN_XDIM - 1 - start, start);
     FbHorizontalLine(start, SCREEN_YDIM - 1 - start, SCREEN_XDIM - 1 - start, SCREEN_YDIM - 1 - start);
-}
-
-static void render_screen(void)
-{
-    int x, y;
-
-    for (y = 0; y < SCREEN_YDIM; y++) {
-        for (x = 0; x < SCREEN_XDIM; x++)
-            printf("%c", screen[x][y]);
-        printf("\n");
-    }
-    maze_program_state = MAZE_PROCESS_COMMANDS;
 }
 
 static int go_up_or_down(int direction)
@@ -794,7 +801,7 @@ static int maze_loop(void)
         draw_objects();
         break;
     case MAZE_SCREEN_RENDER:
-        render_screen();
+        FbSwapBuffers();
         break;
     case MAZE_PROCESS_COMMANDS:
         process_commands();
