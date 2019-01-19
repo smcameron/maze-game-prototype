@@ -14,6 +14,7 @@ enum maze_program_state_t {
     MAZE_RENDER,
     MAZE_OBJECT_RENDER,
     MAZE_RENDER_ENCOUNTER,
+    MAZE_DRAW_STATS,
     MAZE_SCREEN_RENDER,
     MAZE_PROCESS_COMMANDS,
     MAZE_DRAW_MAP,
@@ -63,6 +64,8 @@ static int generation_iterations = 0;
 
 static struct player_state {
     unsigned char x, y, direction;
+    unsigned char hitpoints;
+    int gp;
 } player;
 
 struct point {
@@ -76,6 +79,12 @@ union maze_object_type_specific_data {
     struct {
         signed char health_impact;
     } potion;
+    struct {
+        unsigned char protection;
+    } shield;
+    struct {
+      unsigned char gp;
+    } treasure;
 };
 
 enum maze_object_category {
@@ -99,6 +108,7 @@ struct maze_object_template {
 struct maze_object {
     unsigned char x, y;
     unsigned char type;
+    union maze_object_type_specific_data tsd;
 };
 
 static struct point scroll_points[] =
@@ -151,7 +161,7 @@ static struct maze_object_template maze_object_template[] = {
     { "DRAGON", MAZE_OBJECT_MONSTER, dragon_points, ARRAYSIZE(dragon_points), },
     { "CHEST", MAZE_OBJECT_TREASURE, chest_points, ARRAYSIZE(chest_points), },
     { "COBRA", MAZE_OBJECT_MONSTER, cobra_points, ARRAYSIZE(cobra_points), },
-    { "GRENADE", MAZE_OBJECT_WEAPON, grenade_points, ARRAYSIZE(grenade_points), },
+    { "HOLY GRENADE", MAZE_OBJECT_WEAPON, grenade_points, ARRAYSIZE(grenade_points), },
     { "KEY", MAZE_OBJECT_KEY, key_points, ARRAYSIZE(key_points), },
     { "SCARY ORC", MAZE_OBJECT_MONSTER, orc_points, ARRAYSIZE(orc_points), },
     { "PHANTASM", MAZE_OBJECT_MONSTER, phantasm_points, ARRAYSIZE(phantasm_points), },
@@ -196,6 +206,12 @@ static void maze_stack_push(unsigned char x, unsigned char y, unsigned char dire
 static void maze_stack_pop(void)
 {
     maze_stack_ptr--;
+}
+
+static void player_init()
+{
+    player.hitpoints = 255;
+    player.gp = 0;
 }
 
 /* Initial program state to kick off maze generation */
@@ -346,6 +362,22 @@ static void add_random_object(int x, int y)
     maze_object[nmaze_objects].x = x;
     maze_object[nmaze_objects].y = y;
     maze_object[nmaze_objects].type = rand() % (nobject_types - 2); /* minus 2 to exclude ladders */
+    switch(maze_object_template[maze_object[nmaze_objects].type].category) {
+    case MAZE_OBJECT_MONSTER:
+        maze_object[nmaze_objects].tsd.monster.hitpoints = 10 + (rand() % 20);
+        break;
+    case MAZE_OBJECT_POTION:
+        maze_object[nmaze_objects].tsd.potion.health_impact = (rand() % 40) - 10;
+        break;
+    case MAZE_OBJECT_ARMOR:
+        maze_object[nmaze_objects].tsd.shield.protection = (rand() % 10);
+        break;
+    case MAZE_OBJECT_TREASURE:
+        maze_object[nmaze_objects].tsd.treasure.gp = (rand() % 40);
+        break;
+    default:
+        break;
+    }
     nmaze_objects++;
 }
 
@@ -602,9 +634,18 @@ static void check_for_encounter(unsigned char newx, unsigned char newy)
         if (maze_object[i].x == player.x && maze_object[i].y == player.y) {
             switch(maze_object_template[maze_object[i].type].category) {
             case MAZE_OBJECT_WEAPON:
+               maze_object[i].x = 255; /* Take the object */
+               break;
             case MAZE_OBJECT_KEY:
+               maze_object[i].x = 255; /* Take the object */
+               break;
             case MAZE_OBJECT_POTION:
+               maze_object[i].x = 255; /* Take the object */
+               break;
             case MAZE_OBJECT_TREASURE:
+               maze_object[i].x = 255; /* Take the object */
+               player.gp += maze_object[i].tsd.treasure.gp;
+               break;
             case MAZE_OBJECT_ARMOR:
                maze_object[i].x = 255; /* Take the object */
                break;
@@ -827,7 +868,7 @@ static void render_maze(void)
 
 static void draw_encounter(void)
 {
-    maze_program_state = MAZE_SCREEN_RENDER;
+    maze_program_state = MAZE_DRAW_STATS;
 
     if (encounter_text[0] == 'x')
         return;
@@ -836,6 +877,24 @@ static void draw_encounter(void)
     FbWriteLine(encounter_text);
     FbMove(10, 110);
     FbWriteLine(encounter_name);
+}
+
+static void maze_draw_stats(void)
+{
+	char gold_pieces[10], hitpoints[10];
+
+	itoa(gold_pieces, player.gp, 10);
+	itoa(hitpoints, player.hitpoints, 10);
+	FbMove(2, 122);
+	FbWriteLine("HP:");
+	FbMove(2 + 24, 122);
+	FbWriteLine(hitpoints);
+	FbMove(55, 122);
+	FbWriteLine("GP:");
+	FbMove(55 + 24, 122);
+	FbWriteLine(gold_pieces);
+
+	maze_program_state = MAZE_SCREEN_RENDER;
 }
 
 static int maze_loop(void)
@@ -869,6 +928,9 @@ static int maze_loop(void)
     case MAZE_DRAW_MAP:
         draw_map();
         break;
+    case MAZE_DRAW_STATS:
+        maze_draw_stats();
+        break;
     case MAZE_EXIT:
         return 1;
     }
@@ -891,6 +953,7 @@ int main(int argc, char *argv[])
     srand(tv.tv_usec);
 
     init_seeds();
+    player_init();
 
     do {
         if (maze_loop())

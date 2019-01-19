@@ -229,3 +229,7 @@ int get_keypress(void)
     return rc < 0 ? rc : kp;
 }
 
+void itoa(char *string, int value, __attribute__((unused)) int base)
+{
+	sprintf(string, "%d", value);
+}

@@ -15,5 +15,5 @@ int wait_for_keypress(void);
 int get_keypress(void);
 void FbMove(unsigned char x, unsigned char y);
 void FbWriteLine(char *s);
-
+void itoa(char *string, int value, int base);
 
