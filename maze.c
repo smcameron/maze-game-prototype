@@ -602,11 +602,11 @@ static void check_for_encounter(unsigned char newx, unsigned char newy)
 
     encounter_text = "x";
     for (i = 0; i < nmaze_objects; i++) {
-	/* If we are just about to move onto a square where an object is... */
+        /* If we are just about to move onto a square where an object is... */
         if (maze_object[i].x == newx && maze_object[i].y == newy) {
             switch(maze_object_template[maze_object[i].type].category) {
             case MAZE_OBJECT_MONSTER:
-		encounter_text = "you encounter a";
+                encounter_text = "you encounter a";
                 encounter_name = maze_object_template[maze_object[i].type].name;
                 break;
             case MAZE_OBJECT_WEAPON:
@@ -614,24 +614,24 @@ static void check_for_encounter(unsigned char newx, unsigned char newy)
             case MAZE_OBJECT_POTION:
             case MAZE_OBJECT_TREASURE:
             case MAZE_OBJECT_ARMOR:
-		encounter_text = "you found a";
+                encounter_text = "you found a";
                 encounter_name = maze_object_template[maze_object[i].type].name;
                 break;
             case MAZE_OBJECT_DOWN_LADDER:
-		encounter_text = "a ladder";
-		encounter_name = "leads down";
+                encounter_text = "a ladder";
+                encounter_name = "leads down";
                 break;
             case MAZE_OBJECT_UP_LADDER:
-		encounter_text = "a ladder";
-		encounter_name = "leads up";
+                encounter_text = "a ladder";
+                encounter_name = "leads up";
                 break;
-	    default:
-		encounter_text = "you found something";
+            default:
+                encounter_text = "you found something";
                 encounter_name = maze_object_template[maze_object[i].type].name;
                 break;
             }
         }
-	/* If we are just about to move off of a square where an object is... */
+        /* If we are just about to move off of a square where an object is... */
         if (maze_object[i].x == player.x && maze_object[i].y == player.y) {
             switch(maze_object_template[maze_object[i].type].category) {
             case MAZE_OBJECT_WEAPON:
@@ -653,7 +653,7 @@ static void check_for_encounter(unsigned char newx, unsigned char newy)
             default:
                break;
             }
-	}
+        }
     }
 }
 
@@ -665,17 +665,15 @@ static void maze_button_pressed(void)
         if (player.x == maze_object[i].x && player.y == maze_object[i].y) {
             switch(maze_object_template[maze_object[i].type].category) {
             case MAZE_OBJECT_DOWN_LADDER:
-		 printf("going down\n");
                  go_down();
                  return;
             case MAZE_OBJECT_UP_LADDER:
-		 printf("going up\n");
                  go_up();
                  return;
             default:
                  break;
             }
-	}
+        }
     }
 }
 
@@ -697,7 +695,7 @@ static void process_commands(void)
             newx = player.x + xoff[player.direction];
             newy = player.y + yoff[player.direction];
             if (!out_of_bounds(newx, newy) && is_passage(newx, newy)) {
-		check_for_encounter(newx, newy);
+                check_for_encounter(newx, newy);
                 player.x = newx;
                 player.y = newy;
             }
@@ -710,7 +708,7 @@ static void process_commands(void)
             newx = player.x + xoff[backwards];
             newy = player.y + yoff[backwards];
             if (!out_of_bounds(newx, newy) && is_passage(newx, newy)) {
-		check_for_encounter(newx, newy);
+                check_for_encounter(newx, newy);
                 player.x = newx;
                 player.y = newy;
             }
@@ -882,20 +880,20 @@ static void draw_encounter(void)
 
 static void maze_draw_stats(void)
 {
-	char gold_pieces[10], hitpoints[10];
+    char gold_pieces[10], hitpoints[10];
 
-	itoa(gold_pieces, player.gp, 10);
-	itoa(hitpoints, player.hitpoints, 10);
-	FbMove(2, 122);
-	FbWriteLine("HP:");
-	FbMove(2 + 24, 122);
-	FbWriteLine(hitpoints);
-	FbMove(55, 122);
-	FbWriteLine("GP:");
-	FbMove(55 + 24, 122);
-	FbWriteLine(gold_pieces);
+    itoa(gold_pieces, player.gp, 10);
+    itoa(hitpoints, player.hitpoints, 10);
+    FbMove(2, 122);
+    FbWriteLine("HP:");
+    FbMove(2 + 24, 122);
+    FbWriteLine(hitpoints);
+    FbMove(55, 122);
+    FbWriteLine("GP:");
+    FbMove(55 + 24, 122);
+    FbWriteLine(gold_pieces);
 
-	maze_program_state = MAZE_SCREEN_RENDER;
+    maze_program_state = MAZE_SCREEN_RENDER;
 }
 
 static void init_seeds()
