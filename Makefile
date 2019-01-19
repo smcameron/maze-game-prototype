@@ -1,6 +1,9 @@
 
 all:	maze
 
+xorshift.o:	xorshift.c xorshift.h Makefile
+	gcc -fsanitize=address -g -Wall --pedantic -c xorshift.c
+
 bline.o:	bline.c bline.h Makefile
 	gcc -fsanitize=address -g -Wall --pedantic -c bline.c
 
@@ -12,8 +15,8 @@ maze.o:	maze.c maze.h chest_points.h cobra_points.h dragon_points.h grenade_poin
 	shield_points.h sword_points.h down_ladder_points.h up_ladder_points.h Makefile
 	gcc -fsanitize=address -g -Wall --pedantic -c maze.c
 
-maze:	maze.o bline.o linuxcompat.o Makefile
-	gcc -fsanitize=address -g -Wall --pedantic -o maze maze.o bline.o linuxcompat.o
+maze:	maze.o bline.o linuxcompat.o xorshift.o Makefile
+	gcc -fsanitize=address -g -Wall --pedantic -o maze  maze.o bline.o linuxcompat.o xorshift.o
 
 clean:
 	rm -f maze *.o

@@ -1,10 +1,12 @@
 #include <stdio.h>
-#include <stdlib.h> /* for rand() */
 #include <sys/time.h> /* for gettimeofday */
 #include <string.h> /* for memset */
 
+#include "xorshift.h"
 #include "linuxcompat.h"
 #include "bline.h"
+
+static unsigned int xorshift_state = 0xa5a5a5a5;
 
 /* Program states.  Initial state is MAZE_GAME_INIT */
 enum maze_program_state_t {
@@ -37,7 +39,7 @@ static int current_drawing_object = 0;
 #define YDIM 24
 #define NLEVELS 3
 
-static int maze_random_seed[NLEVELS] = { 0 };
+static unsigned int maze_random_seed[NLEVELS] = { 0 };
 static int maze_current_level = 0;
 
 #define MAZE_PLACE_PLAYER_DO_NOT_MOVE 0
@@ -194,7 +196,7 @@ static void maze_stack_push(unsigned char x, unsigned char y, unsigned char dire
         /* Oops, we blew our stack.  Start over */
         printf("Oops, stack blew... size = %d\n", maze_stack_ptr);
         maze_program_state = MAZE_LEVEL_INIT;
-        maze_random_seed[maze_current_level] = rand();
+        maze_random_seed[maze_current_level] = xorshift(&xorshift_state);
         return;
     }
     if (max_maze_stack_depth < maze_stack_ptr)
@@ -219,7 +221,7 @@ static void player_init()
 static void maze_init(void)
 {
     FbInit();
-    srand(maze_random_seed[maze_current_level]);
+    xorshift_state = maze_random_seed[maze_current_level];
     player.x = XDIM / 2;
     player.y = YDIM - 2;
     player.direction = 0;
@@ -321,7 +323,7 @@ static int diggable(unsigned char digx, unsigned char digy, unsigned char direct
  */
 static int random_choice(int chance)
 {
-    return (rand() % 10000) < 100 * chance;
+    return (xorshift(&xorshift_state) % 10000) < 100 * chance;
 }
 
 static void add_ladder(int ladder_type)
@@ -329,8 +331,8 @@ static void add_ladder(int ladder_type)
     int x, y;
 
     do {
-        x = rand() % XDIM;
-        y = rand() % YDIM;
+        x = xorshift(&xorshift_state) % XDIM;
+        y = xorshift(&xorshift_state) % YDIM;
     } while (!is_passage(x, y));
 
     maze_object[nmaze_objects].x = x;
@@ -362,19 +364,19 @@ static void add_random_object(int x, int y)
 
     maze_object[nmaze_objects].x = x;
     maze_object[nmaze_objects].y = y;
-    maze_object[nmaze_objects].type = rand() % (nobject_types - 2); /* minus 2 to exclude ladders */
+    maze_object[nmaze_objects].type = xorshift(&xorshift_state) % (nobject_types - 2); /* minus 2 to exclude ladders */
     switch(maze_object_template[maze_object[nmaze_objects].type].category) {
     case MAZE_OBJECT_MONSTER:
-        maze_object[nmaze_objects].tsd.monster.hitpoints = 10 + (rand() % 20);
+        maze_object[nmaze_objects].tsd.monster.hitpoints = 10 + (xorshift(&xorshift_state) % 20);
         break;
     case MAZE_OBJECT_POTION:
-        maze_object[nmaze_objects].tsd.potion.health_impact = (rand() % 40) - 10;
+        maze_object[nmaze_objects].tsd.potion.health_impact = (xorshift(&xorshift_state) % 40) - 10;
         break;
     case MAZE_OBJECT_ARMOR:
-        maze_object[nmaze_objects].tsd.shield.protection = (rand() % 10);
+        maze_object[nmaze_objects].tsd.shield.protection = (xorshift(&xorshift_state) % 10);
         break;
     case MAZE_OBJECT_TREASURE:
-        maze_object[nmaze_objects].tsd.treasure.gp = (rand() % 40);
+        maze_object[nmaze_objects].tsd.treasure.gp = (xorshift(&xorshift_state) % 40);
         break;
     default:
         break;
@@ -412,7 +414,7 @@ static void generate_maze(void)
         if (maze_size < min_maze_size()) {
             printf("maze too small, starting over\n");
             maze_program_state = MAZE_LEVEL_INIT;
-            maze_random_seed[maze_current_level] = rand();
+            maze_random_seed[maze_current_level] = xorshift(&xorshift_state);
         }
         add_ladders(0);
         return;
@@ -426,7 +428,7 @@ static void generate_maze(void)
             if (maze_size < min_maze_size()) {
                 printf("maze too small, starting over\n");
                 maze_program_state = MAZE_LEVEL_INIT;
-                maze_random_seed[maze_current_level] = rand();
+                maze_random_seed[maze_current_level] = xorshift(&xorshift_state);
             }
             add_ladders(0);
             return;
@@ -901,7 +903,7 @@ static void init_seeds()
     int i;
 
     for (i = 0; i < NLEVELS; i++)
-        maze_random_seed[i] = rand();
+        maze_random_seed[i] = xorshift(&xorshift_state);
 }
 
 static void maze_game_init(void)
@@ -909,7 +911,7 @@ static void maze_game_init(void)
     struct timeval tv;
 
     gettimeofday(&tv, NULL);
-    srand(tv.tv_usec);
+    xorshift_state = tv.tv_usec;
 
     init_seeds();
     player_init();

@@ -233,3 +233,8 @@ void itoa(char *string, int value, __attribute__((unused)) int base)
 {
 	sprintf(string, "%d", value);
 }
+
+int abs(int x)
+{
+    return x > 0 ? x : -x;	
+}
