@@ -6,9 +6,10 @@
 #include "linuxcompat.h"
 #include "bline.h"
 
-/* Program states.  Initial state is MAZE_INIT */
+/* Program states.  Initial state is MAZE_GAME_INIT */
 enum maze_program_state_t {
-    MAZE_INIT,
+    MAZE_GAME_INIT,
+    MAZE_LEVEL_INIT,
     MAZE_BUILD,
     MAZE_PRINT,
     MAZE_RENDER,
@@ -20,7 +21,7 @@ enum maze_program_state_t {
     MAZE_DRAW_MAP,
     MAZE_EXIT
 };
-static enum maze_program_state_t maze_program_state = MAZE_INIT;
+static enum maze_program_state_t maze_program_state = MAZE_GAME_INIT;
 static int maze_back_wall_distance = 7;
 static int maze_object_distance_limit = 0;
 static int maze_start = 0;
@@ -192,7 +193,7 @@ static void maze_stack_push(unsigned char x, unsigned char y, unsigned char dire
     if (maze_stack_ptr > 0 && maze_stack_ptr >= (ARRAYSIZE(maze_stack))) {
         /* Oops, we blew our stack.  Start over */
         printf("Oops, stack blew... size = %d\n", maze_stack_ptr);
-        maze_program_state = MAZE_INIT;
+        maze_program_state = MAZE_LEVEL_INIT;
         maze_random_seed[maze_current_level] = rand();
         return;
     }
@@ -410,7 +411,7 @@ static void generate_maze(void)
         maze_program_state = MAZE_PRINT;
         if (maze_size < min_maze_size()) {
             printf("maze too small, starting over\n");
-            maze_program_state = MAZE_INIT;
+            maze_program_state = MAZE_LEVEL_INIT;
             maze_random_seed[maze_current_level] = rand();
         }
         add_ladders(0);
@@ -424,7 +425,7 @@ static void generate_maze(void)
             maze_program_state = MAZE_PRINT;
             if (maze_size < min_maze_size()) {
                 printf("maze too small, starting over\n");
-                maze_program_state = MAZE_INIT;
+                maze_program_state = MAZE_LEVEL_INIT;
                 maze_random_seed[maze_current_level] = rand();
             }
             add_ladders(0);
@@ -577,7 +578,7 @@ static int go_up_or_down(int direction)
         return 0;
 
     maze_current_level += direction;
-    maze_program_state = MAZE_INIT;
+    maze_program_state = MAZE_LEVEL_INIT;
     maze_player_initial_placement = placement;
     return 1;
 }
@@ -897,10 +898,34 @@ static void maze_draw_stats(void)
 	maze_program_state = MAZE_SCREEN_RENDER;
 }
 
+static void init_seeds()
+{
+    int i;
+
+    for (i = 0; i < NLEVELS; i++)
+        maze_random_seed[i] = rand();
+}
+
+static void maze_game_init(void)
+{
+    struct timeval tv;
+
+    gettimeofday(&tv, NULL);
+    srand(tv.tv_usec);
+
+    init_seeds();
+    player_init();
+
+    maze_program_state = MAZE_LEVEL_INIT;
+}
+
 static int maze_loop(void)
 {
     switch (maze_program_state) {
-    case MAZE_INIT:
+    case MAZE_GAME_INIT:
+        maze_game_init();
+        break;
+    case MAZE_LEVEL_INIT:
         maze_init();
         break;
     case MAZE_BUILD:
@@ -937,24 +962,8 @@ static int maze_loop(void)
     return 0;
 }
 
-static void init_seeds()
-{
-    int i;
-
-    for (i = 0; i < NLEVELS; i++)
-        maze_random_seed[i] = rand();
-}
-
 int main(int argc, char *argv[])
 {
-    struct timeval tv;
-
-    gettimeofday(&tv, NULL);
-    srand(tv.tv_usec);
-
-    init_seeds();
-    player_init();
-
     do {
         if (maze_loop())
             return 0;
