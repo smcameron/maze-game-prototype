@@ -929,6 +929,8 @@ static void maze_game_init(void)
 
     gettimeofday(&tv, NULL);
     xorshift_state = tv.tv_usec;
+    if (xorshift_state == 0)
+        xorshift_state = 0xa5a5a5a5;
 
     init_seeds();
     player_init();
