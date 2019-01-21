@@ -27,11 +27,18 @@
 #ifdef __linux__
 #include "linuxcompat.h"
 #include "bline.h"
+#else
+#include "menu.h"
+#include "touchCTMU.h"
 #endif
 
 #include "build_bug_on.h"
 #include "xorshift.h"
 
+
+/* TODO figure out where these should really come from */
+#define SCREEN_XDIM 132
+#define SCREEN_YDIM 132
 
 /* Program states.  Initial state is MAZE_GAME_INIT */
 enum maze_program_state_t {
@@ -820,13 +827,13 @@ static void process_commands(void)
 {
     int kp;
 
+#ifdef __linux__
     wait_for_keypress();
     kp = get_keypress();
     if (kp < 0) {
         maze_program_state = MAZE_EXIT;
         return;
     }
-
     switch (kp) {
     case 'w':
         if (maze_menu.menu_active)
@@ -870,6 +877,27 @@ static void process_commands(void)
     default:
         break;
     }
+#else
+
+    if (BUTTON_PRESSED_AND_CONSUME) {
+        maze_button_pressed();
+    } else if (TOP_TAP_AND_CONSUME) {
+        if (maze_menu.menu_active)
+            maze_menu_change_current_selection(-1);
+        else
+            move_player_one_step(player.direction);
+    } else if (BOTTOM_TAP_AND_CONSUME) {
+        if (maze_menu.menu_active)
+            maze_menu_change_current_selection(1);
+        else
+            move_player_one_step(normalize_direction(player.direction + 4));
+    } else if (LEFT_TAP_AND_CONSUME) {
+        player.direction = left_dir(player.direction);
+    } else if (RIGHT_TAP_AND_CONSUME) {
+        player.direction = right_dir(player.direction);
+    }
+
+#endif
     if (maze_program_state == MAZE_PROCESS_COMMANDS) {
         if (maze_menu.menu_active)
             maze_program_state = MAZE_DRAW_MENU;
@@ -1040,10 +1068,12 @@ static void init_seeds()
 
 static void maze_game_init(void)
 {
+#ifdef __linux__
     struct timeval tv;
 
     gettimeofday(&tv, NULL);
     xorshift_state = tv.tv_usec;
+#endif
     if (xorshift_state == 0)
         xorshift_state = 0xa5a5a5a5;
 
@@ -1095,7 +1125,7 @@ static void maze_game_start_menu(void)
     maze_program_state = MAZE_DRAW_MENU;
 }
 
-static int maze_loop(void)
+int maze_loop(void)
 {
     switch (maze_program_state) {
     case MAZE_GAME_INIT:
@@ -1151,11 +1181,14 @@ static int maze_loop(void)
          maze_program_state = MAZE_RENDER;
          break;
     case MAZE_EXIT:
-        return 1;
+        maze_program_state = MAZE_GAME_INIT;
+        returnToMenus();
+        break;
     }
     return 0;
 }
 
+#ifdef __linux__
 int main(int argc, char *argv[])
 {
     do {
@@ -1164,3 +1197,4 @@ int main(int argc, char *argv[])
     } while (1);
     return 0;
 }
+#endif

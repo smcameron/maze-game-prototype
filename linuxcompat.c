@@ -238,3 +238,8 @@ int abs(int x)
 {
     return x > 0 ? x : -x;	
 }
+
+void returnToMenus(void)
+{
+	exit(0);
+}
