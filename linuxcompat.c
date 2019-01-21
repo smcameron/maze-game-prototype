@@ -82,7 +82,7 @@ void FbHorizontalLine(unsigned char x1, unsigned char y1, unsigned char x2, unsi
 {
     unsigned char x;
 
-    for (x = x1; x < x2; x++)
+    for (x = x1; x <= x2; x++)
         plot_point(x, y1, screen);
 }
 
@@ -90,7 +90,7 @@ void FbVerticalLine(unsigned char x1, unsigned char y1, unsigned char x2, unsign
 {
     unsigned char y;
 
-    for (y = y1; y < y2; y++)
+    for (y = y1; y <= y2; y++)
         plot_point(x1, y, screen);
 }
 
