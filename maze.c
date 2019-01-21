@@ -9,6 +9,7 @@
 #include "bline.h"
 #endif
 
+#include "build_bug_on.h"
 #include "xorshift.h"
 
 static unsigned int xorshift_state = 0xa5a5a5a5;
@@ -40,7 +41,7 @@ static int current_drawing_object = 0;
 #define OBJECT_CHANCE 20
 
 /* Dimensions of generated maze */
-#define XDIM 24
+#define XDIM 24 /* Must be divisible by 8 */
 #define YDIM 24
 #define NLEVELS 3
 
@@ -230,7 +231,7 @@ static void maze_init(void)
     FbInit();
     xorshift_state = maze_random_seed[maze_current_level];
     if (xorshift_state == 0)
-	xorshift_state = 0xa5a5a5a5;
+        xorshift_state = 0xa5a5a5a5;
     player.x = XDIM / 2;
     player.y = YDIM - 2;
     player.direction = 0;
@@ -423,6 +424,8 @@ static void generate_maze(void)
     static int counter = 0;
     unsigned char *x, *y, *d;
     unsigned char nx, ny;
+
+    BUILD_ASSERT((XDIM % 8) == 0); /* This is a build-time assertion that generates no code */
 
     x = &maze_stack[maze_stack_ptr].x;
     y = &maze_stack[maze_stack_ptr].y;
