@@ -502,19 +502,19 @@ static void draw_map()
 /* These integer ratios approximate 0.4, 0.4 * 0.8, 0.4 * 0.8^2, 0.4 * 0.8^3, 0.4 * 0.8^4, ...
  * which are used to approximate appropriate perspective scaling (reduction in size as viewing
  * distance linearly increases stepwise) while avoiding floating point operations.
+ *
+ * The denominator is always 1024.
  */
-static const int drawing_scale_numerator[] = { 4, 32, 27, 204, 163, 131, 104, 84 };
-static const int drawing_scale_denom[] = { 10, 100, 100, 1000, 1000, 1000, 1000, 1000 };
+static const int drawing_scale_numerator[] = { 410, 328, 262, 210, 168, 134, 107, 86 };
 
 static void draw_object(struct point drawing[], int npoints, int scale_index)
 {
     int i;
     static const int xcenter = SCREEN_XDIM / 2;
     static const int ycenter = SCREEN_YDIM / 2;
-    int num, denom;
+    int num;
 
     num = drawing_scale_numerator[scale_index];
-    denom = drawing_scale_denom[scale_index];
 
     for (i = 0; i < npoints - 1;) {
         if (drawing[i].x == -128) {
@@ -525,8 +525,8 @@ static void draw_object(struct point drawing[], int npoints, int scale_index)
             i+=2;
             continue;
         }
-        FbLine(xcenter + (drawing[i].x * num) / denom, ycenter + (drawing[i].y * num) / denom,
-            xcenter + (drawing[i + 1].x * num) / denom, ycenter + (drawing[i + 1].y * num) / denom);
+        FbLine(xcenter + ((drawing[i].x * num) >> 10), ycenter + ((drawing[i].y * num) >> 10),
+            xcenter + ((drawing[i + 1].x * num) >> 10), ycenter + ((drawing[i + 1].y * num) >> 10));
         i++;
     }
 }
@@ -868,7 +868,7 @@ static void render_maze(void)
     }
     /* Advance forward ahead of the player in our rendering */
     maze_start = maze_start + maze_scale;
-    maze_scale = (maze_scale * 80) / 100;
+    maze_scale = (maze_scale * 819) >> 10; /* Approximately multiply by 0.8 */
     if (hit_back_wall) { /* If we are facing a wall, do not draw beyond that wall. */
         maze_back_wall_distance = maze_render_step; /* used by draw_objects */
         maze_object_distance_limit = maze_render_step;
