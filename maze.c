@@ -1,3 +1,23 @@
+/*********************************************
+
+ Pseudo 3D maze game for RVASEC badge hardware.
+
+ Author: Stephen M. Cameron <stephenmcameron@gmail.com>
+ (c) 2019 Stephen M. Cameron
+
+ If you're wondering why this program is written
+ in such a strange way, it's because of the environment
+ it needs to fit into.  This program is meant to run
+ on a PIC32 in a kind of cooperative multiprogram system
+ and can't monopolize the CPU for any significant length
+ of time (though it does have some compatibility bodges that
+ allow it to run as a native linux program too.)  That is
+ why maze_loop() is just a big switch statement that does
+ different things based on maze_program_state and why there
+ are so many global variables.  So the weirdness is there
+ for a reason, and is not how I would normally write a program.
+
+**********************************************/
 #ifdef __linux__
 #include <stdio.h>
 #include <sys/time.h> /* for gettimeofday */
@@ -12,7 +32,6 @@
 #include "build_bug_on.h"
 #include "xorshift.h"
 
-static unsigned int xorshift_state = 0xa5a5a5a5;
 
 /* Program states.  Initial state is MAZE_GAME_INIT */
 enum maze_program_state_t {
@@ -41,6 +60,7 @@ static int maze_object_distance_limit = 0;
 static int maze_start = 0;
 static int maze_scale = 12;
 static int current_drawing_object = 0;
+static unsigned int xorshift_state = 0xa5a5a5a5;
 
 #define TERMINATE_CHANCE 5
 #define BRANCH_CHANCE 30
