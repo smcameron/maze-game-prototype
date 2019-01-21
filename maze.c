@@ -17,6 +17,7 @@ static unsigned int xorshift_state = 0xa5a5a5a5;
 /* Program states.  Initial state is MAZE_GAME_INIT */
 enum maze_program_state_t {
     MAZE_GAME_INIT,
+    MAZE_GAME_START_MENU,
     MAZE_LEVEL_INIT,
     MAZE_BUILD,
     MAZE_PRINT,
@@ -27,6 +28,11 @@ enum maze_program_state_t {
     MAZE_SCREEN_RENDER,
     MAZE_PROCESS_COMMANDS,
     MAZE_DRAW_MAP,
+    MAZE_DRAW_MENU,
+    MAZE_STATE_GO_DOWN,
+    MAZE_STATE_GO_UP,
+    MAZE_STATE_FIGHT,
+    MAZE_STATE_FLEE,
     MAZE_EXIT
 };
 static enum maze_program_state_t maze_program_state = MAZE_GAME_INIT;
@@ -108,7 +114,7 @@ enum maze_object_category {
 };
 
 struct maze_object_template {
-    char name[20];
+    char name[14];
     enum maze_object_category category;
     struct point *drawing;
     int npoints;
@@ -183,8 +189,46 @@ static struct maze_object_template maze_object_template[] = {
     { "LADDER", MAZE_OBJECT_UP_LADDER, up_ladder_points, ARRAYSIZE(down_ladder_points), },
 };
 
+struct maze_menu_item {
+    char text[15];
+    enum maze_program_state_t next_state;
+    unsigned char cookie;
+};
+
+static struct maze_menu {
+    char title[15];
+    struct maze_menu_item item[20];
+    unsigned char nitems;
+    unsigned char current_item;
+    unsigned char menu_active;
+    unsigned char chosen_cookie;
+} maze_menu;
+
 static struct maze_object maze_object[MAX_MAZE_OBJECTS];
 static int nmaze_objects = 0;
+
+static void maze_menu_clear(void)
+{
+    strncpy(maze_menu.title, "", sizeof(maze_menu.title) - 1);
+    maze_menu.nitems = 0;
+    maze_menu.current_item = 0;
+    maze_menu.menu_active = 0;
+    maze_menu.chosen_cookie = 0;
+}
+
+static void maze_menu_add_item(char *text, enum maze_program_state_t next_state, unsigned char cookie)
+{
+    int i;
+
+    if (maze_menu.nitems >= ARRAYSIZE(maze_menu.item))
+        return;
+
+    i = maze_menu.nitems;
+    strncpy(maze_menu.item[i].text, text, sizeof(maze_menu.item[i].text) - 1);
+    maze_menu.item[i].next_state = next_state;
+    maze_menu.item[i].cookie = cookie;
+    maze_menu.nitems++;
+}
 
 static int min_maze_size(void)
 {
@@ -615,10 +659,11 @@ static int go_down(void)
 static char *encounter_text = "x";
 static char *encounter_name = "";
 
-static void check_for_encounter(unsigned char newx, unsigned char newy)
+static int check_for_encounter(unsigned char newx, unsigned char newy)
 {
-    int i;
+    int i, monster;
 
+    monster = 0;
     encounter_text = "x";
     for (i = 0; i < nmaze_objects; i++) {
         /* If we are just about to move onto a square where an object is... */
@@ -627,6 +672,7 @@ static void check_for_encounter(unsigned char newx, unsigned char newy)
             case MAZE_OBJECT_MONSTER:
                 encounter_text = "you encounter a";
                 encounter_name = maze_object_template[maze_object[i].type].name;
+                monster = 1;
                 break;
             case MAZE_OBJECT_WEAPON:
             case MAZE_OBJECT_KEY:
@@ -674,26 +720,79 @@ static void check_for_encounter(unsigned char newx, unsigned char newy)
             }
         }
     }
+    return monster;
 }
 
 static void maze_button_pressed(void)
 {
     int i;
 
+    int newx, newy;
+    int monster_present = 0;
+
+    if (maze_menu.menu_active) {
+        maze_program_state = maze_menu.item[maze_menu.current_item].next_state;
+        maze_menu.chosen_cookie = maze_menu.item[maze_menu.current_item].cookie;
+        maze_menu.menu_active = 0;
+        return;
+    }
+    newx = player.x + xoff[player.direction];
+    newy = player.y + yoff[player.direction];
+    maze_menu_clear();
+    strcpy(maze_menu.title, "CHOOSE ACTION");
     for (i = 0; i < nmaze_objects; i++) {
         if (player.x == maze_object[i].x && player.y == maze_object[i].y) {
             switch(maze_object_template[maze_object[i].type].category) {
             case MAZE_OBJECT_DOWN_LADDER:
-                 go_down();
-                 return;
+                 maze_menu_add_item("CLIMB DOWN", MAZE_STATE_GO_DOWN, 1);
+                 break;
             case MAZE_OBJECT_UP_LADDER:
-                 go_up();
-                 return;
+                 maze_menu_add_item("CLIMB UP", MAZE_STATE_GO_UP, 1);
+                 break;
+            case MAZE_OBJECT_MONSTER:
+                 monster_present = 1;
+                 break;
             default:
                  break;
             }
         }
+        if (maze_object[i].x == newx && maze_object[i].y == newy &&
+            maze_object_template[maze_object[i].type].category == MAZE_OBJECT_MONSTER)
+            monster_present = 1;
     }
+    if (monster_present) {
+        maze_menu_add_item("FIGHT MONSTER!", MAZE_STATE_FIGHT, 1);
+        maze_menu_add_item("FLEE!", MAZE_STATE_FLEE, 1);
+    }
+    maze_menu_add_item("WIELD WEAPON", MAZE_RENDER, 1);
+    maze_menu_add_item("READ SCROLL", MAZE_RENDER, 1);
+    maze_menu_add_item("QUAFF POTION", MAZE_RENDER, 1);
+    maze_menu_add_item("NEVER MIND", MAZE_RENDER, 1);
+    maze_menu_add_item("EXIT GAME", MAZE_EXIT, 1);
+    maze_menu.menu_active = 1;
+    maze_program_state = MAZE_DRAW_MENU;
+}
+
+static void move_player_one_step(int direction)
+{
+    int newx, newy;
+    newx = player.x + xoff[direction];
+    newy = player.y + yoff[direction];
+    if (!out_of_bounds(newx, newy) && is_passage(newx, newy)) {
+        if (!check_for_encounter(newx, newy)) {
+            player.x = newx;
+            player.y = newy;
+        }
+    }
+}
+
+static void maze_menu_change_current_selection(int direction)
+{
+    maze_menu.current_item += direction;
+    if (maze_menu.current_item < 0)
+        maze_menu.current_item = maze_menu.nitems - 1;
+    else if (maze_menu.current_item >= maze_menu.nitems)
+        maze_menu.current_item = 0;
 }
 
 static void process_commands(void)
@@ -709,29 +808,16 @@ static void process_commands(void)
 
     switch (kp) {
     case 'w':
-        {
-            int newx, newy;
-            newx = player.x + xoff[player.direction];
-            newy = player.y + yoff[player.direction];
-            if (!out_of_bounds(newx, newy) && is_passage(newx, newy)) {
-                check_for_encounter(newx, newy);
-                player.x = newx;
-                player.y = newy;
-            }
-        }
+        if (maze_menu.menu_active)
+            maze_menu_change_current_selection(-1);
+        else
+            move_player_one_step(player.direction);
         break;
     case 's':
-        {
-            int newx, newy, backwards;
-            backwards = normalize_direction(player.direction + 4);
-            newx = player.x + xoff[backwards];
-            newy = player.y + yoff[backwards];
-            if (!out_of_bounds(newx, newy) && is_passage(newx, newy)) {
-                check_for_encounter(newx, newy);
-                player.x = newx;
-                player.y = newy;
-            }
-        }
+        if (maze_menu.menu_active)
+            maze_menu_change_current_selection(1);
+        else
+            move_player_one_step(normalize_direction(player.direction + 4));
         break;
     case 'a':
         player.direction = left_dir(player.direction);
@@ -748,10 +834,14 @@ static void process_commands(void)
     case 'c':
         if (go_down())
             return;
+        else
+           maze_program_state = MAZE_RENDER;
         break;
     case 'e':
         if (go_up())
            return;
+        else
+           maze_program_state = MAZE_RENDER;
         break;
     case 'q':
         maze_program_state = MAZE_EXIT;
@@ -759,8 +849,12 @@ static void process_commands(void)
     default:
         break;
     }
-    if (maze_program_state == MAZE_PROCESS_COMMANDS)
-        maze_program_state = MAZE_RENDER;
+    if (maze_program_state == MAZE_PROCESS_COMMANDS) {
+        if (maze_menu.menu_active)
+            maze_program_state = MAZE_DRAW_MENU;
+        else
+            maze_program_state = MAZE_RENDER;
+    }
 }
 
 static void draw_objects(void)
@@ -935,7 +1029,49 @@ static void maze_game_init(void)
     init_seeds();
     player_init();
 
-    maze_program_state = MAZE_LEVEL_INIT;
+    maze_program_state = MAZE_GAME_START_MENU;
+}
+
+static void maze_draw_menu(void)
+{
+    int i, y, first_item, last_item;
+
+    first_item = maze_menu.current_item - 4;
+    if (first_item < 0)
+        first_item = 0;
+    last_item = maze_menu.current_item + 4;
+    if (last_item > maze_menu.nitems - 1)
+        last_item = maze_menu.nitems - 1;
+
+    FbClear();
+    FbMove(8, 5);
+    FbWriteLine(maze_menu.title);
+
+    y = SCREEN_YDIM / 2 - 10 * (maze_menu.current_item - first_item);
+    for (i = first_item; i <= last_item; i++) {
+        FbMove(10, y);
+        FbWriteLine(maze_menu.item[i].text);
+        y += 10;
+    }
+
+    FbHorizontalLine(5, SCREEN_YDIM / 2 - 2, SCREEN_XDIM - 5, SCREEN_YDIM / 2 - 2);
+    FbHorizontalLine(5, SCREEN_YDIM / 2 + 10, SCREEN_XDIM - 5, SCREEN_YDIM / 2 + 10);
+    FbVerticalLine(5, SCREEN_YDIM / 2 - 2, 5, SCREEN_YDIM / 2 + 10);
+    FbVerticalLine(SCREEN_XDIM - 5, SCREEN_YDIM / 2 - 2, SCREEN_XDIM - 5, SCREEN_YDIM / 2 + 10);
+    maze_program_state = MAZE_SCREEN_RENDER;
+}
+
+static void maze_game_start_menu(void)
+{
+
+    maze_menu_clear();
+
+    maze_menu.menu_active = 1;
+    strcpy(maze_menu.title, "MINES OF BADGE");
+    maze_menu_add_item("NEW GAME", MAZE_LEVEL_INIT, 0);
+    maze_menu_add_item("EXIT GAME", MAZE_EXIT, 0);
+
+    maze_program_state = MAZE_DRAW_MENU;
 }
 
 static int maze_loop(void)
@@ -943,6 +1079,9 @@ static int maze_loop(void)
     switch (maze_program_state) {
     case MAZE_GAME_INIT:
         maze_game_init();
+        break;
+    case MAZE_GAME_START_MENU:
+        maze_game_start_menu();
         break;
     case MAZE_LEVEL_INIT:
         maze_init();
@@ -975,6 +1114,21 @@ static int maze_loop(void)
     case MAZE_DRAW_STATS:
         maze_draw_stats();
         break;
+    case MAZE_DRAW_MENU:
+        maze_draw_menu();
+        break;
+    case MAZE_STATE_GO_DOWN:
+         if (!go_down())
+            maze_program_state = MAZE_RENDER;
+         break;
+    case MAZE_STATE_GO_UP:
+        if (!go_up())
+            maze_program_state = MAZE_RENDER;
+        break;
+    case MAZE_STATE_FIGHT:
+    case MAZE_STATE_FLEE:
+         maze_program_state = MAZE_RENDER;
+         break;
     case MAZE_EXIT:
         return 1;
     }
