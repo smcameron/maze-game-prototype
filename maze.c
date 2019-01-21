@@ -784,6 +784,7 @@ static void maze_button_pressed(void)
         maze_menu_add_item("FIGHT MONSTER!", MAZE_STATE_FIGHT, 1);
         maze_menu_add_item("FLEE!", MAZE_STATE_FLEE, 1);
     }
+    maze_menu_add_item("VIEW MAP", MAZE_DRAW_MAP, 1);
     maze_menu_add_item("WIELD WEAPON", MAZE_RENDER, 1);
     maze_menu_add_item("READ SCROLL", MAZE_RENDER, 1);
     maze_menu_add_item("QUAFF POTION", MAZE_RENDER, 1);
