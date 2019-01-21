@@ -1,10 +1,15 @@
+#ifdef __linux__
 #include <stdio.h>
 #include <sys/time.h> /* for gettimeofday */
 #include <string.h> /* for memset */
+#endif
 
-#include "xorshift.h"
+#ifdef __linux__
 #include "linuxcompat.h"
 #include "bline.h"
+#endif
+
+#include "xorshift.h"
 
 static unsigned int xorshift_state = 0xa5a5a5a5;
 
@@ -194,7 +199,9 @@ static void maze_stack_push(unsigned char x, unsigned char y, unsigned char dire
     maze_stack_ptr++;
     if (maze_stack_ptr > 0 && maze_stack_ptr >= (ARRAYSIZE(maze_stack))) {
         /* Oops, we blew our stack.  Start over */
+#ifdef __linux__
         printf("Oops, stack blew... size = %d\n", maze_stack_ptr);
+#endif
         maze_program_state = MAZE_LEVEL_INIT;
         maze_random_seed[maze_current_level] = xorshift(&xorshift_state);
         return;
@@ -222,6 +229,8 @@ static void maze_init(void)
 {
     FbInit();
     xorshift_state = maze_random_seed[maze_current_level];
+    if (xorshift_state == 0)
+	xorshift_state = 0xa5a5a5a5;
     player.x = XDIM / 2;
     player.y = YDIM - 2;
     player.direction = 0;
@@ -384,7 +393,28 @@ static void add_random_object(int x, int y)
     nmaze_objects++;
 }
 
-static void print_maze();
+static void print_maze()
+{
+#ifdef __linux__
+    int i, j;
+
+    for (j = 0; j < YDIM; j++) {
+        for (i = 0; i < XDIM; i++) {
+            if (is_passage(i, j))
+                if (j == player.y && i == player.x)
+                    printf("@");
+                else
+                    printf(" ");
+            else
+                printf("#");
+        }
+        printf("\n");
+    }
+    printf("maze_size = %d, max stack depth = %d, generation_iterations = %d\n", maze_size, max_maze_stack_depth, generation_iterations);
+#endif
+    maze_program_state = MAZE_RENDER;
+}
+
 /* Normally this would be recursive, but instead we use an explicit stack
  * to enable this to yield and then restart as needed.
  */
@@ -412,7 +442,9 @@ static void generate_maze(void)
     if (maze_stack_ptr == MAZE_STACK_EMPTY) {
         maze_program_state = MAZE_PRINT;
         if (maze_size < min_maze_size()) {
+#ifdef __linux
             printf("maze too small, starting over\n");
+#endif
             maze_program_state = MAZE_LEVEL_INIT;
             maze_random_seed[maze_current_level] = xorshift(&xorshift_state);
         }
@@ -426,7 +458,9 @@ static void generate_maze(void)
         if (maze_stack_ptr == MAZE_STACK_EMPTY) {
             maze_program_state = MAZE_PRINT;
             if (maze_size < min_maze_size()) {
+#ifdef __linux
                 printf("maze too small, starting over\n");
+#endif
                 maze_program_state = MAZE_LEVEL_INIT;
                 maze_random_seed[maze_current_level] = xorshift(&xorshift_state);
             }
@@ -439,26 +473,6 @@ static void generate_maze(void)
         if (diggable(xoff[new_dir] + nx, yoff[new_dir] + ny, new_dir))
             maze_stack_push(nx, ny, (unsigned char) new_dir);
     }
-}
-
-static void print_maze()
-{
-    int i, j;
-
-    for (j = 0; j < YDIM; j++) {
-        for (i = 0; i < XDIM; i++) {
-            if (is_passage(i, j))
-                if (j == player.y && i == player.x)
-                    printf("@");
-                else
-                    printf(" ");
-            else
-                printf("#");
-        }
-        printf("\n");
-    }
-    maze_program_state = MAZE_RENDER;
-    printf("maze_size = %d, max stack depth = %d, generation_iterations = %d\n", maze_size, max_maze_stack_depth, generation_iterations);
 }
 
 static void draw_map()
