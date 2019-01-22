@@ -835,9 +835,9 @@ static void maze_menu_change_current_selection(int direction)
 
 static void process_commands(void)
 {
+#ifdef __linux__
     int kp;
 
-#ifdef __linux__
     wait_for_keypress();
     kp = get_keypress();
     if (kp < 0) {
@@ -905,6 +905,8 @@ static void process_commands(void)
         player.direction = left_dir(player.direction);
     } else if (RIGHT_TAP_AND_CONSUME) {
         player.direction = right_dir(player.direction);
+    } else {
+        return;
     }
 
 #endif
