@@ -60,6 +60,10 @@ enum maze_program_state_t {
     MAZE_STATE_GO_UP,
     MAZE_STATE_FIGHT,
     MAZE_STATE_FLEE,
+    MAZE_RENDER_COMBAT,
+    MAZE_COMBAT_MONSTER_MOVE,
+    MAZE_STATE_PLAYER_DEFEATS_MONSTER,
+    MAZE_STATE_PLAYER_DIED,
     MAZE_EXIT
 };
 static enum maze_program_state_t maze_program_state = MAZE_GAME_INIT;
@@ -69,6 +73,7 @@ static int maze_start = 0;
 static int maze_scale = 12;
 static int current_drawing_object = 0;
 static unsigned int xorshift_state = 0xa5a5a5a5;
+static unsigned char combat_mode = 0;
 
 #define TERMINATE_CHANCE 5
 #define BRANCH_CHANCE 30
@@ -107,9 +112,11 @@ static int generation_iterations = 0;
 
 static struct player_state {
     unsigned char x, y, direction;
+    unsigned char combatx, combaty;
     unsigned char hitpoints;
+    unsigned char weapon;
     int gp;
-} player;
+} player, combatant;
 
 struct point {
     signed char x, y;
@@ -118,6 +125,7 @@ struct point {
 union maze_object_type_specific_data {
     struct {
         unsigned char hitpoints;
+        unsigned char speed;
     } monster;
     struct {
         signed char health_impact;
@@ -147,6 +155,9 @@ struct maze_object_template {
     enum maze_object_category category;
     struct point *drawing;
     int npoints;
+    short speed;
+    unsigned char hitpoints;
+    unsigned char damage;
 };
 
 struct maze_object {
@@ -194,6 +205,12 @@ static struct point up_ladder_points[] =
 static struct point down_ladder_points[] =
 #include "down_ladder_points.h"
 
+static struct point player_points[] =
+#include "player_points.h"
+
+static struct point bones_points[] =
+#include "bones_points.h"
+
 #define MAZE_NOBJECT_TYPES 13
 static int nobject_types = MAZE_NOBJECT_TYPES;
 
@@ -201,21 +218,21 @@ static int nobject_types = MAZE_NOBJECT_TYPES;
 #define ARRAYSIZE(x) (sizeof((x)) / sizeof((x)[0]))
 
 static struct maze_object_template maze_object_template[] = {
-    { "SCROLL", BLUE, MAZE_OBJECT_WEAPON, scroll_points, ARRAYSIZE(scroll_points), },
-    { "DRAGON", GREEN, MAZE_OBJECT_MONSTER, dragon_points, ARRAYSIZE(dragon_points), },
-    { "CHEST", YELLOW, MAZE_OBJECT_TREASURE, chest_points, ARRAYSIZE(chest_points), },
-    { "COBRA", GREEN, MAZE_OBJECT_MONSTER, cobra_points, ARRAYSIZE(cobra_points), },
-    { "HOLY GRENADE", YELLOW, MAZE_OBJECT_WEAPON, grenade_points, ARRAYSIZE(grenade_points), },
-    { "KEY", YELLOW, MAZE_OBJECT_KEY, key_points, ARRAYSIZE(key_points), },
-    { "SCARY ORC", GREEN, MAZE_OBJECT_MONSTER, orc_points, ARRAYSIZE(orc_points), },
-    { "PHANTASM", WHITE, MAZE_OBJECT_MONSTER, phantasm_points, ARRAYSIZE(phantasm_points), },
-    { "POTION", RED, MAZE_OBJECT_POTION, potion_points, ARRAYSIZE(potion_points), },
-    { "SHIELD", YELLOW, MAZE_OBJECT_ARMOR, shield_points, ARRAYSIZE(shield_points), },
-    { "SWORD", YELLOW, MAZE_OBJECT_WEAPON, sword_points, ARRAYSIZE(sword_points), },
+    { "SCROLL", BLUE, MAZE_OBJECT_WEAPON, scroll_points, ARRAYSIZE(scroll_points), 0, 0, 10 },
+    { "DRAGON", GREEN, MAZE_OBJECT_MONSTER, dragon_points, ARRAYSIZE(dragon_points), 8, 40, 20 },
+    { "CHEST", YELLOW, MAZE_OBJECT_TREASURE, chest_points, ARRAYSIZE(chest_points), 0, 0, 0 },
+    { "COBRA", GREEN, MAZE_OBJECT_MONSTER, cobra_points, ARRAYSIZE(cobra_points), 2, 5, 10 },
+    { "HOLY GRENADE", YELLOW, MAZE_OBJECT_WEAPON, grenade_points, ARRAYSIZE(grenade_points), 0, 0, 20 },
+    { "KEY", YELLOW, MAZE_OBJECT_KEY, key_points, ARRAYSIZE(key_points), 0, 0, 0 },
+    { "SCARY ORC", GREEN, MAZE_OBJECT_MONSTER, orc_points, ARRAYSIZE(orc_points), 4, 15, 15 },
+    { "PHANTASM", WHITE, MAZE_OBJECT_MONSTER, phantasm_points, ARRAYSIZE(phantasm_points), 6, 15, 4 },
+    { "POTION", RED, MAZE_OBJECT_POTION, potion_points, ARRAYSIZE(potion_points), 0, 0, 30 },
+    { "SHIELD", YELLOW, MAZE_OBJECT_ARMOR, shield_points, ARRAYSIZE(shield_points), 0, 0, 5 },
+    { "SWORD", YELLOW, MAZE_OBJECT_WEAPON, sword_points, ARRAYSIZE(sword_points), 0, 0, 15 },
 #define DOWN_LADDER 11
-    { "LADDER", WHITE, MAZE_OBJECT_DOWN_LADDER, down_ladder_points, ARRAYSIZE(down_ladder_points), },
+    { "LADDER", WHITE, MAZE_OBJECT_DOWN_LADDER, down_ladder_points, ARRAYSIZE(down_ladder_points), 0, 0, 0 },
 #define UP_LADDER 12
-    { "LADDER", WHITE, MAZE_OBJECT_UP_LADDER, up_ladder_points, ARRAYSIZE(down_ladder_points), },
+    { "LADDER", WHITE, MAZE_OBJECT_UP_LADDER, up_ladder_points, ARRAYSIZE(down_ladder_points), 0, 0, 0 },
 };
 
 struct maze_menu_item {
@@ -316,6 +333,7 @@ static void maze_init(void)
     maze_program_state = MAZE_BUILD;
     maze_size = 0;
     nmaze_objects = 0;
+    combat_mode = 0;
 }
 
 /* Returns 1 if (x,y) is empty passage, 0 if solid rock */
@@ -442,15 +460,20 @@ static void add_ladders(int level)
 
 static void add_random_object(int x, int y)
 {
+    int otype;
     if (nmaze_objects >= MAX_MAZE_OBJECTS - 2) /* Leave 2 for ladders */
         return;
 
     maze_object[nmaze_objects].x = x;
     maze_object[nmaze_objects].y = y;
-    maze_object[nmaze_objects].type = xorshift(&xorshift_state) % (nobject_types - 2); /* minus 2 to exclude ladders */
+    otype = xorshift(&xorshift_state) % (nobject_types - 2); /* minus 2 to exclude ladders */
+    maze_object[nmaze_objects].type = otype;
     switch(maze_object_template[maze_object[nmaze_objects].type].category) {
     case MAZE_OBJECT_MONSTER:
-        maze_object[nmaze_objects].tsd.monster.hitpoints = 10 + (xorshift(&xorshift_state) % 20);
+        maze_object[nmaze_objects].tsd.monster.hitpoints =
+            maze_object_template[otype].hitpoints + (xorshift(&xorshift_state) % 5);
+        maze_object[nmaze_objects].tsd.monster.speed =
+            maze_object_template[maze_object[nmaze_objects].type].speed;
         break;
     case MAZE_OBJECT_POTION:
         maze_object[nmaze_objects].tsd.potion.health_impact = (xorshift(&xorshift_state) % 40) - 10;
@@ -587,11 +610,11 @@ static void draw_map()
  */
 static const int drawing_scale_numerator[] = { 410, 328, 262, 210, 168, 134, 107, 86 };
 
-static void draw_object(struct point drawing[], int npoints, int scale_index, int color)
+static void draw_object(struct point drawing[], int npoints, int scale_index, int color, int x, int y)
 {
     int i;
-    static const int xcenter = SCREEN_XDIM / 2;
-    static const int ycenter = SCREEN_YDIM / 2;
+    int xcenter = x;
+    int ycenter = y;
     int num;
 
     num = drawing_scale_numerator[scale_index];
@@ -695,6 +718,7 @@ static int go_down(void)
 
 static char *encounter_text = "x";
 static char *encounter_name = "";
+static unsigned char encounter_object = 255;
 
 static int check_for_encounter(unsigned char newx, unsigned char newy)
 {
@@ -709,6 +733,7 @@ static int check_for_encounter(unsigned char newx, unsigned char newy)
             case MAZE_OBJECT_MONSTER:
                 encounter_text = "you encounter a";
                 encounter_name = maze_object_template[maze_object[i].type].name;
+                encounter_object = i;
                 monster = 1;
                 break;
             case MAZE_OBJECT_WEAPON:
@@ -767,6 +792,8 @@ static void maze_button_pressed(void)
     int newx, newy;
     int monster_present = 0;
 
+    if (player.hitpoints == 0)
+        return;
     if (maze_menu.menu_active) {
         maze_program_state = maze_menu.item[maze_menu.current_item].next_state;
         maze_menu.chosen_cookie = maze_menu.item[maze_menu.current_item].cookie;
@@ -813,15 +840,59 @@ static void maze_button_pressed(void)
 
 static void move_player_one_step(int direction)
 {
-    int newx, newy;
-    newx = player.x + xoff[direction];
-    newy = player.y + yoff[direction];
-    if (!out_of_bounds(newx, newy) && is_passage(newx, newy)) {
-        if (!check_for_encounter(newx, newy)) {
-            player.x = newx;
-            player.y = newy;
-        }
-    }
+    int newx, newy, dx, dy, dist, hp, str, damage;
+
+    if (!combat_mode) {
+       newx = player.x + xoff[direction];
+       newy = player.y + yoff[direction];
+       if (!out_of_bounds(newx, newy) && is_passage(newx, newy)) {
+           if (!check_for_encounter(newx, newy)) {
+               player.x = newx;
+               player.y = newy;
+           }
+       }
+   } else {
+
+       newx = player.combatx + xoff[direction] * 4;
+       newy = player.combaty + yoff[direction] * 4;
+       if (newx < 10)
+           newx = 10;
+       if (newx > SCREEN_XDIM - 10)
+           newx = SCREEN_XDIM - 10;
+       if (newy < 10)
+           newy = 10;
+       if (newy > SCREEN_YDIM - 10)
+           newy = SCREEN_YDIM - 10;
+       player.combatx = newx;
+       player.combaty = newy;
+       dx = player.combatx - combatant.combatx;
+       dy = player.combaty - combatant.combaty;
+       dist = dx * dx + dy * dy;
+       if (dist < 100) {
+           str = xorshift(&xorshift_state) % 160;
+           /* damage = xorshift(&xorshift_state) % maze_object_template[maze_object[player.weapon].type].damage; */
+           damage = xorshift(&xorshift_state) % 20;
+           combatant.combatx -= dx * (80 + str) / 100;
+           combatant.combaty -= dy * (80 + str) / 100;
+           if (combatant.combatx < 20)
+              combatant.combatx += 20;
+           if (combatant.combatx > SCREEN_XDIM - 20)
+              combatant.combatx -= 20;
+           if (combatant.combaty < 20)
+              combatant.combaty += 20;
+           if (combatant.combaty > SCREEN_XDIM - 20)
+              combatant.combaty -= 20;
+           hp = combatant.hitpoints - damage;
+           if (hp < 0)
+              hp = 0;
+           combatant.hitpoints = hp;
+           if (combatant.hitpoints == 0) {
+               maze_program_state = MAZE_STATE_PLAYER_DEFEATS_MONSTER;
+               combat_mode = 0;
+               maze_object[encounter_object].x = 255; /* Move it off the board */
+           }
+       }
+   }
 }
 
 static void maze_menu_change_current_selection(int direction)
@@ -837,6 +908,11 @@ static void process_commands(void)
 {
 #ifdef __linux__
     int kp;
+#endif
+    int base_direction;
+
+    base_direction = combat_mode ? 0 : player.direction;
+#ifdef __linux__
 
     wait_for_keypress();
     kp = get_keypress();
@@ -849,19 +925,25 @@ static void process_commands(void)
         if (maze_menu.menu_active)
             maze_menu_change_current_selection(-1);
         else
-            move_player_one_step(player.direction);
+            move_player_one_step(base_direction);
         break;
     case 's':
         if (maze_menu.menu_active)
             maze_menu_change_current_selection(1);
         else
-            move_player_one_step(normalize_direction(player.direction + 4));
+            move_player_one_step(normalize_direction(base_direction + 4));
         break;
     case 'a':
-        player.direction = left_dir(player.direction);
+        if (combat_mode)
+            move_player_one_step(6);
+        else
+           player.direction = left_dir(player.direction);
         break;
     case 'd':
-        player.direction = right_dir(player.direction);
+        if (combat_mode)
+            move_player_one_step(2);
+        else
+            player.direction = right_dir(player.direction);
         break;
     case 'm':
         maze_program_state = MAZE_DRAW_MAP;
@@ -895,24 +977,37 @@ static void process_commands(void)
         if (maze_menu.menu_active)
             maze_menu_change_current_selection(-1);
         else
-            move_player_one_step(player.direction);
+            move_player_one_step(base_direction);
     } else if (BOTTOM_TAP_AND_CONSUME) {
         if (maze_menu.menu_active)
             maze_menu_change_current_selection(1);
         else
-            move_player_one_step(normalize_direction(player.direction + 4));
+            move_player_one_step(normalize_direction(base_direction + 4));
     } else if (LEFT_TAP_AND_CONSUME) {
-        player.direction = left_dir(player.direction);
+        if (combat_mode)
+            move_player_one_step(6);
+        else
+            player.direction = left_dir(player.direction);
     } else if (RIGHT_TAP_AND_CONSUME) {
-        player.direction = right_dir(player.direction);
+        if (combat_mode)
+            move_player_one_step(2);
+        else
+            player.direction = right_dir(player.direction);
     } else {
         return;
     }
 
 #endif
+
+    if (player.hitpoints == 0) {
+        maze_program_state = MAZE_GAME_INIT;
+    }
+
     if (maze_program_state == MAZE_PROCESS_COMMANDS) {
         if (maze_menu.menu_active)
             maze_program_state = MAZE_DRAW_MENU;
+        else if (combat_mode)
+            maze_program_state = MAZE_COMBAT_MONSTER_MOVE;
         else
             maze_program_state = MAZE_RENDER;
     }
@@ -953,14 +1048,14 @@ static void draw_objects(void)
             s = abs(maze_object[i].y - player.y);
             if (s >= maze_object_distance_limit)
                 goto next_object;
-            draw_object(drawing, npoints, s, color);
+            draw_object(drawing, npoints, s, color, SCREEN_XDIM / 2, SCREEN_YDIM / 2);
         }
     } else if (y[0] == y[1]) {
         if (maze_object[i].y == y[0] && maze_object[i].x >= x[a] && maze_object[i].x <= x[b]) {
             s = abs(maze_object[i].x - player.x);
             if (s >= maze_object_distance_limit)
                 goto next_object;
-            draw_object(drawing, npoints, s, color);
+            draw_object(drawing, npoints, s, color, SCREEN_XDIM / 2, SCREEN_YDIM / 2);
         }
     }
 
@@ -1056,6 +1151,98 @@ static void draw_encounter(void)
     FbWriteLine(encounter_name);
 }
 
+static void maze_combat_monster_move(void)
+{
+    int dx, dy, dist, speed, str, damage, hp;
+
+    dx = player.combatx - combatant.combatx;
+    dy = player.combaty - combatant.combaty;
+    dist = dx * dx + dy * dy;
+    speed = maze_object[encounter_object].tsd.monster.speed;
+
+    if (dist > 100) {
+        if (dx < 0)
+            combatant.combatx -= speed;
+        else if (dx > 0)
+            combatant.combatx += speed;
+        if (dy < 0)
+            combatant.combaty -= speed;
+        else if (dy > 0)
+            combatant.combaty += speed;
+    } else {
+        str = xorshift(&xorshift_state) % 160;
+        damage = xorshift(&xorshift_state) % maze_object_template[maze_object[encounter_object].type].damage;
+        player.combatx += dx * (80 + str) / 100;
+        player.combaty += dy * (80 + str) / 100;
+        if (player.combatx < 20)
+           player.combatx += 20;
+        if (player.combatx > SCREEN_XDIM - 20)
+           player.combatx -= 20;
+        if (player.combaty < 20)
+           player.combaty += 20;
+        if (player.combaty > SCREEN_XDIM - 20)
+           player.combaty -= 20;
+        hp = player.hitpoints - damage;
+        if (hp < 0)
+           hp = 0;
+        player.hitpoints = hp;
+        if (player.hitpoints == 0) {
+            maze_program_state = MAZE_STATE_PLAYER_DIED;
+            return;
+        }
+    }
+    maze_program_state = MAZE_RENDER_COMBAT;
+}
+
+static void maze_render_combat(void)
+{
+    int color, otype, npoints;
+    struct point *drawing;
+
+    FbClear();
+
+    /* Draw the monster */
+    otype = maze_object[encounter_object].type;
+    color = maze_object_template[otype].color;
+    drawing = maze_object_template[otype].drawing;
+    npoints = maze_object_template[otype].npoints;
+    draw_object(drawing, npoints, ARRAYSIZE(drawing_scale_numerator) - 1,
+                color, combatant.combatx, combatant.combaty);
+
+    /* Draw the player */
+    draw_object(player_points, ARRAYSIZE(player_points), ARRAYSIZE(drawing_scale_numerator) - 1,
+                WHITE, player.combatx, player.combaty);
+
+    maze_program_state = MAZE_DRAW_STATS;
+}
+
+static void maze_player_defeats_monster(void)
+{
+    FbClear();
+    FbColor(RED);
+    FbMove(10, SCREEN_YDIM / 2 - 10);
+    FbWriteLine(encounter_name);
+    FbMove(10, SCREEN_YDIM / 2);
+    FbWriteLine("DEFEATED!");
+    encounter_text = "x";
+    encounter_name = "x";
+    combat_mode = 0;
+    maze_program_state = MAZE_SCREEN_RENDER;
+}
+
+static void maze_player_died(void)
+{
+    FbClear();
+    FbColor(RED);
+    FbMove(10, SCREEN_YDIM - 20);
+    FbWriteLine("YOU HAVE DIED");
+    draw_object(bones_points, ARRAYSIZE(bones_points), 0, WHITE, SCREEN_XDIM / 2, SCREEN_YDIM / 2);
+    encounter_text = "x";
+    encounter_name = "x";
+    combat_mode = 0;
+    maze_program_state = MAZE_SCREEN_RENDER;
+}
+
 static void maze_draw_stats(void)
 {
     char gold_pieces[10], hitpoints[10];
@@ -1064,9 +1251,16 @@ static void maze_draw_stats(void)
     itoa(gold_pieces, player.gp, 10);
     itoa(hitpoints, player.hitpoints, 10);
     FbMove(2, 122);
+    if (player.hitpoints < 50)
+       FbColor(RED);
+    else if (player.hitpoints < 100)
+       FbColor(YELLOW);
+    else
+       FbColor(GREEN);
     FbWriteLine("HP:");
     FbMove(2 + 24, 122);
     FbWriteLine(hitpoints);
+    FbColor(YELLOW);
     FbMove(55, 122);
     FbWriteLine("GP:");
     FbMove(55 + 24, 122);
@@ -1148,6 +1342,17 @@ static void maze_game_start_menu(void)
     maze_program_state = MAZE_DRAW_MENU;
 }
 
+static void maze_begin_fight()
+{
+    combat_mode = 1;
+    player.combatx = SCREEN_XDIM / 2;
+    player.combaty = SCREEN_YDIM - 20;
+    combatant.combatx = SCREEN_XDIM / 2;
+    combatant.combaty = 20;
+    combatant.hitpoints = maze_object[encounter_object].tsd.monster.hitpoints;
+    maze_program_state = MAZE_RENDER_COMBAT;
+}
+
 int maze_loop(void)
 {
     switch (maze_program_state) {
@@ -1200,8 +1405,22 @@ int maze_loop(void)
             maze_program_state = MAZE_RENDER;
         break;
     case MAZE_STATE_FIGHT:
+         maze_begin_fight();
+         break;
     case MAZE_STATE_FLEE:
          maze_program_state = MAZE_RENDER;
+         break;
+    case MAZE_COMBAT_MONSTER_MOVE:
+         maze_combat_monster_move();
+         break;
+    case MAZE_RENDER_COMBAT:
+         maze_render_combat();
+         break;
+    case MAZE_STATE_PLAYER_DEFEATS_MONSTER:
+         maze_player_defeats_monster();
+         break;
+    case MAZE_STATE_PLAYER_DIED:
+         maze_player_died();
          break;
     case MAZE_EXIT:
         maze_program_state = MAZE_GAME_INIT;
