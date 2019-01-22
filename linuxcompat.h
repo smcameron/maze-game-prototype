@@ -18,3 +18,14 @@ void FbWriteLine(char *s);
 void itoa(char *string, int value, int base);
 int abs(int x);
 void returnToMenus(void);
+void FbColor(int color);
+
+#define BLUE    0
+#define GREEN   1
+#define RED     2
+#define BLACK   3
+#define WHITE   4
+#define CYAN    5
+#define YELLOW  6
+#define MAGENTA 7
+

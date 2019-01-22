@@ -28,6 +28,7 @@
 #include "linuxcompat.h"
 #include "bline.h"
 #else
+#include "colors.h"
 #include "menu.h"
 #include "touchCTMU.h"
 #endif
@@ -142,6 +143,7 @@ enum maze_object_category {
 
 struct maze_object_template {
     char name[14];
+    int color;
     enum maze_object_category category;
     struct point *drawing;
     int npoints;
@@ -199,21 +201,21 @@ static int nobject_types = MAZE_NOBJECT_TYPES;
 #define ARRAYSIZE(x) (sizeof((x)) / sizeof((x)[0]))
 
 static struct maze_object_template maze_object_template[] = {
-    { "SCROLL", MAZE_OBJECT_WEAPON, scroll_points, ARRAYSIZE(scroll_points), },
-    { "DRAGON", MAZE_OBJECT_MONSTER, dragon_points, ARRAYSIZE(dragon_points), },
-    { "CHEST", MAZE_OBJECT_TREASURE, chest_points, ARRAYSIZE(chest_points), },
-    { "COBRA", MAZE_OBJECT_MONSTER, cobra_points, ARRAYSIZE(cobra_points), },
-    { "HOLY GRENADE", MAZE_OBJECT_WEAPON, grenade_points, ARRAYSIZE(grenade_points), },
-    { "KEY", MAZE_OBJECT_KEY, key_points, ARRAYSIZE(key_points), },
-    { "SCARY ORC", MAZE_OBJECT_MONSTER, orc_points, ARRAYSIZE(orc_points), },
-    { "PHANTASM", MAZE_OBJECT_MONSTER, phantasm_points, ARRAYSIZE(phantasm_points), },
-    { "POTION", MAZE_OBJECT_POTION, potion_points, ARRAYSIZE(potion_points), },
-    { "SHIELD", MAZE_OBJECT_ARMOR, shield_points, ARRAYSIZE(shield_points), },
-    { "SWORD", MAZE_OBJECT_WEAPON, sword_points, ARRAYSIZE(sword_points), },
+    { "SCROLL", BLUE, MAZE_OBJECT_WEAPON, scroll_points, ARRAYSIZE(scroll_points), },
+    { "DRAGON", GREEN, MAZE_OBJECT_MONSTER, dragon_points, ARRAYSIZE(dragon_points), },
+    { "CHEST", YELLOW, MAZE_OBJECT_TREASURE, chest_points, ARRAYSIZE(chest_points), },
+    { "COBRA", GREEN, MAZE_OBJECT_MONSTER, cobra_points, ARRAYSIZE(cobra_points), },
+    { "HOLY GRENADE", YELLOW, MAZE_OBJECT_WEAPON, grenade_points, ARRAYSIZE(grenade_points), },
+    { "KEY", YELLOW, MAZE_OBJECT_KEY, key_points, ARRAYSIZE(key_points), },
+    { "SCARY ORC", GREEN, MAZE_OBJECT_MONSTER, orc_points, ARRAYSIZE(orc_points), },
+    { "PHANTASM", WHITE, MAZE_OBJECT_MONSTER, phantasm_points, ARRAYSIZE(phantasm_points), },
+    { "POTION", RED, MAZE_OBJECT_POTION, potion_points, ARRAYSIZE(potion_points), },
+    { "SHIELD", YELLOW, MAZE_OBJECT_ARMOR, shield_points, ARRAYSIZE(shield_points), },
+    { "SWORD", YELLOW, MAZE_OBJECT_WEAPON, sword_points, ARRAYSIZE(sword_points), },
 #define DOWN_LADDER 11
-    { "LADDER", MAZE_OBJECT_DOWN_LADDER, down_ladder_points, ARRAYSIZE(down_ladder_points), },
+    { "LADDER", WHITE, MAZE_OBJECT_DOWN_LADDER, down_ladder_points, ARRAYSIZE(down_ladder_points), },
 #define UP_LADDER 12
-    { "LADDER", MAZE_OBJECT_UP_LADDER, up_ladder_points, ARRAYSIZE(down_ladder_points), },
+    { "LADDER", WHITE, MAZE_OBJECT_UP_LADDER, up_ladder_points, ARRAYSIZE(down_ladder_points), },
 };
 
 struct maze_menu_item {
@@ -554,10 +556,17 @@ static void draw_map()
     int x, y;
 
     FbClear();
+    FbColor(GREEN);
     for (x = 0; x < XDIM; x++) {
         for (y = 0; y < YDIM; y++) {
             if (x == player.x && y == player.y) {
-                FbLine(x * 3, y * 3, x * 3, y * 3);
+                FbColor(WHITE);
+                FbLine(x * 3 - 2, y * 3 - 2, x * 3 + 2, y * 3 - 2);
+                FbLine(x * 3 - 2, y * 3 - 1, x * 3 + 2, y * 3 - 1);
+                FbLine(x * 3 - 2, y * 3 - 0, x * 3 + 2, y * 3 - 0);
+                FbLine(x * 3 - 2, y * 3 + 1, x * 3 + 2, y * 3 + 1);
+                FbLine(x * 3 - 2, y * 3 + 2, x * 3 + 2, y * 3 + 2);
+                FbColor(GREEN);
                 continue;
             }
             if (is_visited(x, y)) {
@@ -578,7 +587,7 @@ static void draw_map()
  */
 static const int drawing_scale_numerator[] = { 410, 328, 262, 210, 168, 134, 107, 86 };
 
-static void draw_object(struct point drawing[], int npoints, int scale_index)
+static void draw_object(struct point drawing[], int npoints, int scale_index, int color)
 {
     int i;
     static const int xcenter = SCREEN_XDIM / 2;
@@ -587,6 +596,7 @@ static void draw_object(struct point drawing[], int npoints, int scale_index)
 
     num = drawing_scale_numerator[scale_index];
 
+    FbColor(color);
     for (i = 0; i < npoints - 1;) {
         if (drawing[i].x == -128) {
             i++;
@@ -910,6 +920,7 @@ static void draw_objects(void)
 {
     int a, b, i, x[2], y[2], s, otype, npoints;
     struct point *drawing;
+    int color;
 
     a = 0;
     b = 1;
@@ -934,19 +945,20 @@ static void draw_objects(void)
     otype = maze_object[i].type;
     drawing = maze_object_template[otype].drawing;
     npoints = maze_object_template[otype].npoints;
+    color = maze_object_template[otype].color;
     if (x[0] == x[1]) {
         if (maze_object[i].x == x[0] && maze_object[i].y >= y[a] && maze_object[i].y <= y[b]) {
             s = abs(maze_object[i].y - player.y);
             if (s >= maze_object_distance_limit)
                 goto next_object;
-            draw_object(drawing, npoints, s);
+            draw_object(drawing, npoints, s, color);
         }
     } else if (y[0] == y[1]) {
         if (maze_object[i].y == y[0] && maze_object[i].x >= x[a] && maze_object[i].x <= x[b]) {
             s = abs(maze_object[i].x - player.x);
             if (s >= maze_object_distance_limit)
                 goto next_object;
-            draw_object(drawing, npoints, s);
+            draw_object(drawing, npoints, s, color);
         }
     }
 
@@ -960,7 +972,7 @@ next_object:
 
 static int maze_render_step = 0;
 
-static void render_maze(void)
+static void render_maze(int color)
 {
     int x, y, ox, oy, left, right;
     const int steps = 7;
@@ -970,6 +982,8 @@ static void render_maze(void)
         FbClear();
         maze_object_distance_limit = steps;
     }
+
+    FbColor(color);
 
     ox = player.x + xoff[player.direction] * maze_render_step;
     oy = player.y + yoff[player.direction] * maze_render_step;
@@ -1033,7 +1047,7 @@ static void draw_encounter(void)
 
     if (encounter_text[0] == 'x')
         return;
-
+    FbColor(WHITE);
     FbMove(10, 100);
     FbWriteLine(encounter_text);
     FbMove(10, 110);
@@ -1044,6 +1058,7 @@ static void maze_draw_stats(void)
 {
     char gold_pieces[10], hitpoints[10];
 
+    FbColor(WHITE);
     itoa(gold_pieces, player.gp, 10);
     itoa(hitpoints, player.hitpoints, 10);
     FbMove(2, 122);
@@ -1095,16 +1110,22 @@ static void maze_draw_menu(void)
         last_item = maze_menu.nitems - 1;
 
     FbClear();
+    FbColor(WHITE);
     FbMove(8, 5);
     FbWriteLine(maze_menu.title);
 
     y = SCREEN_YDIM / 2 - 10 * (maze_menu.current_item - first_item);
     for (i = first_item; i <= last_item; i++) {
+        if (i == maze_menu.current_item)
+            FbColor(GREEN);
+        else
+            FbColor(WHITE);
         FbMove(10, y);
         FbWriteLine(maze_menu.item[i].text);
         y += 10;
     }
 
+    FbColor(GREEN);
     FbHorizontalLine(5, SCREEN_YDIM / 2 - 2, SCREEN_XDIM - 5, SCREEN_YDIM / 2 - 2);
     FbHorizontalLine(5, SCREEN_YDIM / 2 + 10, SCREEN_XDIM - 5, SCREEN_YDIM / 2 + 10);
     FbVerticalLine(5, SCREEN_YDIM / 2 - 2, 5, SCREEN_YDIM / 2 + 10);
@@ -1144,7 +1165,7 @@ int maze_loop(void)
         print_maze();
         break;
     case MAZE_RENDER:
-        render_maze();
+        render_maze(WHITE);
         break;
     case MAZE_OBJECT_RENDER:
         draw_objects();

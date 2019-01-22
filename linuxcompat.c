@@ -42,17 +42,39 @@ static const char font_2_bits[] = {
    0x00, 0x00, 0x00, 0x00, 0x0e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
    0x00, 0x00, 0x00, 0x1f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
+
+static const char *color_code[] = {
+    "\x1B[34m", /* BLUE */
+    "\x1B[32m", /* GREEN */
+    "\x1B[31m", /* RED */
+    "\x1B[30m", /* BLACK */
+    "\x1B[37m", /* WHITE */
+    "\x1B[36m", /* CYAN */
+    "\x1B[33m", /* YELLOW */
+    "\x1B[35m", /* MAGENTA */
+};
+
+static const char *normal_color = "\x1B[0m";
+static unsigned char current_color = BLUE;
+
+void FbColor(int color)
+{
+    current_color = (unsigned char) (color % 8);
+}
+
 void FbInit(void)
 {
 }
 
 static unsigned char screen[SCREEN_XDIM][SCREEN_YDIM];
+static unsigned char screen_color[SCREEN_XDIM][SCREEN_YDIM];
 
 void plot_point(int x, int y, void *context)
 {
     unsigned char *screen = context;
 
     screen[SCREEN_YDIM * x + y] = '#';
+    screen_color[x][y] = current_color;
 }
 
 void clear_point(int x, int y, void *context)
@@ -60,17 +82,25 @@ void clear_point(int x, int y, void *context)
     unsigned char *screen = context;
 
     screen[SCREEN_YDIM * x + y] = ' ';
+    screen_color[x][y] = current_color;
 }
 
 void FbSwapBuffers(void)
 {
     int x, y;
+    unsigned char last_color = 255;
 
     for (y = 0; y < SCREEN_YDIM; y++) {
-        for (x = 0; x < SCREEN_XDIM; x++)
-            printf("%c", screen[x][y]);
+        for (x = 0; x < SCREEN_XDIM; x++) {
+            unsigned char c = screen_color[x][y];
+            if (c != last_color) {
+                printf("%s", color_code[c]);
+            }
+            printf("%c%c", screen[x][y], screen[x][y]);
+        }
         printf("\n");
     }
+    printf("%s", normal_color);
 }
 
 void FbLine(unsigned char x1, unsigned char y1, unsigned char x2, unsigned char y2)
