@@ -64,6 +64,8 @@ enum maze_program_state_t {
     MAZE_COMBAT_MONSTER_MOVE,
     MAZE_STATE_PLAYER_DEFEATS_MONSTER,
     MAZE_STATE_PLAYER_DIED,
+    MAZE_CHOOSE_POTION,
+    MAZE_QUAFF_POTION,
     MAZE_EXIT
 };
 static enum maze_program_state_t maze_program_state = MAZE_GAME_INIT;
@@ -122,13 +124,38 @@ struct point {
     signed char x, y;
 };
 
+static struct potion_descriptor {
+    char *adjective;
+    signed char health_impact;
+} potion_type[] = {
+    { "smelly", 0 },
+    { "funky", 0 },
+    { "misty", 0 },
+    { "frothy", 0 },
+    { "foamy", 0 },
+    { "fulminating", 0 },
+    { "smoking", 0 },
+    { "sparkling", 0 },
+    { "bubbling", 0 },
+    { "acrid", 0 },
+    { "pungent", 0 },
+    { "stinky", 0 },
+    { "aromatic", 0 },
+    { "gelatinous", 0 },
+    { "jiggly", 0 },
+    { "glowing", 0 },
+    { "luminescent", 0 },
+    { "pearlescent", 0 },
+    { "fruity", 0 },
+};
+
 union maze_object_type_specific_data {
     struct {
         unsigned char hitpoints;
         unsigned char speed;
     } monster;
     struct {
-        signed char health_impact;
+        unsigned char type;
     } potion;
     struct {
         unsigned char protection;
@@ -476,7 +503,7 @@ static void add_random_object(int x, int y)
             maze_object_template[maze_object[nmaze_objects].type].speed;
         break;
     case MAZE_OBJECT_POTION:
-        maze_object[nmaze_objects].tsd.potion.health_impact = (xorshift(&xorshift_state) % 40) - 10;
+        maze_object[nmaze_objects].tsd.potion.type = (xorshift(&xorshift_state) % ARRAYSIZE(potion_type));
         break;
     case MAZE_OBJECT_ARMOR:
         maze_object[nmaze_objects].tsd.shield.protection = (xorshift(&xorshift_state) % 10);
@@ -717,6 +744,7 @@ static int go_down(void)
 }
 
 static char *encounter_text = "x";
+static char *encounter_adjective = "";
 static char *encounter_name = "";
 static unsigned char encounter_object = 255;
 
@@ -732,28 +760,37 @@ static int check_for_encounter(unsigned char newx, unsigned char newy)
             switch(maze_object_template[maze_object[i].type].category) {
             case MAZE_OBJECT_MONSTER:
                 encounter_text = "you encounter a";
+                encounter_adjective = "";
                 encounter_name = maze_object_template[maze_object[i].type].name;
                 encounter_object = i;
                 monster = 1;
                 break;
             case MAZE_OBJECT_WEAPON:
             case MAZE_OBJECT_KEY:
-            case MAZE_OBJECT_POTION:
             case MAZE_OBJECT_TREASURE:
             case MAZE_OBJECT_ARMOR:
                 encounter_text = "you found a";
+                encounter_adjective = "";
                 encounter_name = maze_object_template[maze_object[i].type].name;
+                break;
+            case MAZE_OBJECT_POTION:
+                encounter_text = "you found a";
+                encounter_adjective = potion_type[maze_object[i].tsd.potion.type].adjective;
+                encounter_name = "potion";
                 break;
             case MAZE_OBJECT_DOWN_LADDER:
                 encounter_text = "a ladder";
+                encounter_adjective = "";
                 encounter_name = "leads down";
                 break;
             case MAZE_OBJECT_UP_LADDER:
                 encounter_text = "a ladder";
+                encounter_adjective = "";
                 encounter_name = "leads up";
                 break;
             default:
                 encounter_text = "you found something";
+                encounter_adjective = "";
                 encounter_name = maze_object_template[maze_object[i].type].name;
                 break;
             }
@@ -831,9 +868,9 @@ static void maze_button_pressed(void)
     maze_menu_add_item("VIEW MAP", MAZE_DRAW_MAP, 1);
     maze_menu_add_item("WIELD WEAPON", MAZE_RENDER, 1);
     maze_menu_add_item("READ SCROLL", MAZE_RENDER, 1);
-    maze_menu_add_item("QUAFF POTION", MAZE_RENDER, 1);
+    maze_menu_add_item("QUAFF POTION", MAZE_CHOOSE_POTION, 1);
     maze_menu_add_item("NEVER MIND", MAZE_RENDER, 1);
-    maze_menu_add_item("EXIT GAME", MAZE_EXIT, 1);
+    maze_menu_add_item("EXIT GAME", MAZE_EXIT, 255);
     maze_menu.menu_active = 1;
     maze_program_state = MAZE_DRAW_MENU;
 }
@@ -1145,9 +1182,13 @@ static void draw_encounter(void)
     if (encounter_text[0] == 'x')
         return;
     FbColor(WHITE);
-    FbMove(10, 100);
+    FbMove(10, 90);
     FbWriteLine(encounter_text);
-    FbMove(10, 110);
+    FbMove(10, 100);
+    if (strcmp(encounter_adjective, "") != 0) {
+        FbWriteLine(encounter_adjective);
+        FbMove(10, 110);
+    }
     FbWriteLine(encounter_name);
 }
 
@@ -1225,6 +1266,7 @@ static void maze_player_defeats_monster(void)
     FbMove(10, SCREEN_YDIM / 2);
     FbWriteLine("DEFEATED!");
     encounter_text = "x";
+    encounter_adjective = "";
     encounter_name = "x";
     combat_mode = 0;
     maze_program_state = MAZE_SCREEN_RENDER;
@@ -1238,8 +1280,63 @@ static void maze_player_died(void)
     FbWriteLine("YOU HAVE DIED");
     draw_object(bones_points, ARRAYSIZE(bones_points), 0, WHITE, SCREEN_XDIM / 2, SCREEN_YDIM / 2);
     encounter_text = "x";
+    encounter_adjective = "";
     encounter_name = "x";
     combat_mode = 0;
+    maze_program_state = MAZE_SCREEN_RENDER;
+}
+
+static void maze_choose_potion(void)
+{
+    int i;
+    char name[20];
+
+    maze_menu_clear();
+    maze_menu.menu_active = 1;
+    strcpy(maze_menu.title, "CHOOSE POTION");
+
+    for (i = 0; i < nmaze_objects; i++) {
+        if (maze_object[i].x == 255 &&
+            maze_object_template[maze_object[i].type].category == MAZE_OBJECT_POTION) {
+            strcpy(name, potion_type[maze_object[i].tsd.potion.type].adjective);
+            strcat(name, " potion");
+            maze_menu_add_item(name, MAZE_QUAFF_POTION, i);
+        }
+    }
+    maze_menu_add_item("NEVER MIND", MAZE_RENDER, 255);
+    maze_program_state = MAZE_DRAW_MENU;
+}
+
+static void maze_quaff_potion(void)
+{
+    short hp, delta, object, ptype;
+    char *feel;
+
+    if (maze_menu.chosen_cookie == 255) { /* never mind */
+        maze_program_state = MAZE_RENDER;
+    }
+    object = maze_menu.chosen_cookie;
+    ptype = maze_object[object].tsd.potion.type;
+    delta = potion_type[ptype].health_impact;
+    maze_object[object].x = 254; /* off maze, but not in pocket, "use up" the potion */
+    hp = player.hitpoints + delta;
+    if (hp > 255)
+        hp = 255;
+    if (hp < 0)
+        hp = 0;
+    delta = hp - player.hitpoints;
+    if (delta < 0)
+       feel = "worse";
+    else if (delta > 0)
+       feel = "better";
+    else
+       feel = "nothing";
+    player.hitpoints = hp;
+    FbClear();
+    FbMove(10, SCREEN_YDIM / 2);
+    FbWriteLine("you feel");
+    FbMove(10, SCREEN_YDIM / 2 + 10);
+    FbWriteLine(feel);
     maze_program_state = MAZE_SCREEN_RENDER;
 }
 
@@ -1269,12 +1366,20 @@ static void maze_draw_stats(void)
     maze_program_state = MAZE_SCREEN_RENDER;
 }
 
-static void init_seeds()
+static void init_seeds(void)
 {
     int i;
 
     for (i = 0; i < NLEVELS; i++)
         maze_random_seed[i] = xorshift(&xorshift_state);
+}
+
+static void potions_init(void)
+{
+   int i;
+
+   for (i = 0; i < ARRAYSIZE(potion_type); i++)
+       potion_type[i].health_impact = (xorshift(&xorshift_state) % 50) - 15;
 }
 
 static void maze_game_init(void)
@@ -1290,6 +1395,7 @@ static void maze_game_init(void)
 
     init_seeds();
     player_init();
+    potions_init();
 
     maze_program_state = MAZE_GAME_START_MENU;
 }
@@ -1421,6 +1527,12 @@ int maze_loop(void)
          break;
     case MAZE_STATE_PLAYER_DIED:
          maze_player_died();
+         break;
+    case MAZE_CHOOSE_POTION:
+         maze_choose_potion();
+         break;
+    case MAZE_QUAFF_POTION:
+         maze_quaff_potion();
          break;
     case MAZE_EXIT:
         maze_program_state = MAZE_GAME_INIT;
