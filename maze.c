@@ -1353,8 +1353,10 @@ static void maze_choose_potion(void)
     strcpy(maze_menu.title, "CHOOSE POTION");
 
     for (i = 0; i < nmaze_objects; i++) {
-        if (maze_object[i].x == 255 &&
-            maze_object_template[maze_object[i].type].category == MAZE_OBJECT_POTION) {
+        if (maze_object_template[maze_object[i].type].category != MAZE_OBJECT_POTION)
+            continue;
+        if (maze_object[i].x == 255 ||
+            (maze_object[i].x == player.x && maze_object[i].y == player.y)) {
             strcpy(name, potion_type[maze_object[i].tsd.potion.type].adjective);
             strcat(name, " potion");
             maze_menu_add_item(name, MAZE_QUAFF_POTION, i);
@@ -1407,8 +1409,10 @@ static void maze_choose_weapon(void)
     strcpy(maze_menu.title, "WIELD WEAPON");
 
     for (i = 0; i < nmaze_objects; i++) {
-        if (maze_object[i].x == 255 &&
-            maze_object_template[maze_object[i].type].category == MAZE_OBJECT_WEAPON) {
+        if (maze_object_template[maze_object[i].type].category != MAZE_OBJECT_WEAPON)
+            continue;
+        if (maze_object[i].x == 255 ||
+            (maze_object[i].x == player.x && maze_object[i].y == player.y)) {
             strcpy(name, weapon_type[maze_object[i].tsd.weapon.type].adjective);
             strcat(name, " ");
             strcat(name, weapon_type[maze_object[i].tsd.weapon.type].name);
