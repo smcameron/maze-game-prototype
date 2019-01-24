@@ -66,6 +66,8 @@ enum maze_program_state_t {
     MAZE_STATE_PLAYER_DIED,
     MAZE_CHOOSE_POTION,
     MAZE_QUAFF_POTION,
+    MAZE_CHOOSE_WEAPON,
+    MAZE_WIELD_WEAPON,
     MAZE_EXIT
 };
 static enum maze_program_state_t maze_program_state = MAZE_GAME_INIT;
@@ -149,13 +151,38 @@ static struct potion_descriptor {
     { "fruity", 0 },
 };
 
+static struct weapon_descriptor {
+    char *adjective;
+    char *name;
+    unsigned char ranged;
+    unsigned char shots;
+    unsigned char damage;
+} weapon_type[] = {
+ { "ordinary", "dagger", 0, 0, 3 },
+ { "black", "sword", 0, 0, 5 },
+ { "short", "sword", 0, 0, 8 },
+ { "broad", "sword", 0, 0, 10 },
+ { "long", "sword", 0, 0, 10 },
+ { "dwarven", "sword", 0, 0, 12 },
+ { "orcish", "sword", 0, 0, 13 },
+ { "golden", "sword", 0, 0, 14 },
+ { "elvish", "sword", 0, 0, 15 },
+ { "lost", "katana", 0, 0, 15 },
+ { "great", "sword", 0, 0, 16 },
+ { "cosmic", "sword", 0, 0, 20 },
+ { "glowing", "sword", 0, 0, 22 },
+ { "fire", "saber", 0, 0, 25 },
+ { "flaming", "scimitar", 0, 0, 27 },
+ { "electro", "cutlass", 0, 0, 30 },
+};
+
 union maze_object_type_specific_data {
     struct {
         unsigned char hitpoints;
         unsigned char speed;
     } monster;
     struct {
-        unsigned char type;
+        unsigned char type; /* index into potion_type[] */
     } potion;
     struct {
         unsigned char protection;
@@ -163,11 +190,16 @@ union maze_object_type_specific_data {
     struct {
       unsigned char gp;
     } treasure;
+    struct {
+      unsigned char type; /* index into weapon_type[] */
+    } weapon;
 };
 
 enum maze_object_category {
     MAZE_OBJECT_MONSTER,
     MAZE_OBJECT_WEAPON,
+    MAZE_OBJECT_SCROLL,
+    MAZE_OBJECT_GRENADE,
     MAZE_OBJECT_KEY,
     MAZE_OBJECT_POTION,
     MAZE_OBJECT_ARMOR,
@@ -245,7 +277,7 @@ static int nobject_types = MAZE_NOBJECT_TYPES;
 #define ARRAYSIZE(x) (sizeof((x)) / sizeof((x)[0]))
 
 static struct maze_object_template maze_object_template[] = {
-    { "SCROLL", BLUE, MAZE_OBJECT_WEAPON, scroll_points, ARRAYSIZE(scroll_points), 0, 0, 10 },
+    { "SCROLL", BLUE, MAZE_OBJECT_SCROLL, scroll_points, ARRAYSIZE(scroll_points), 0, 0, 10 },
     { "DRAGON", GREEN, MAZE_OBJECT_MONSTER, dragon_points, ARRAYSIZE(dragon_points), 8, 40, 20 },
     { "CHEST", YELLOW, MAZE_OBJECT_TREASURE, chest_points, ARRAYSIZE(chest_points), 0, 0, 0 },
     { "COBRA", GREEN, MAZE_OBJECT_MONSTER, cobra_points, ARRAYSIZE(cobra_points), 2, 5, 10 },
@@ -352,6 +384,7 @@ static void maze_init(void)
     player.x = XDIM / 2;
     player.y = YDIM - 2;
     player.direction = 0;
+    player.weapon = 255;
     max_maze_stack_depth = 0;
     memset(maze, 0, sizeof(maze));
     memset(maze_visited, 0, sizeof(maze_visited));
@@ -511,6 +544,11 @@ static void add_random_object(int x, int y)
     case MAZE_OBJECT_TREASURE:
         maze_object[nmaze_objects].tsd.treasure.gp = (xorshift(&xorshift_state) % 40);
         break;
+    case MAZE_OBJECT_WEAPON:
+        maze_object[nmaze_objects].tsd.weapon.type = (xorshift(&xorshift_state) % ARRAYSIZE(weapon_type));
+        break;
+    case MAZE_OBJECT_SCROLL:
+    case MAZE_OBJECT_GRENADE:
     default:
         break;
     }
@@ -766,8 +804,14 @@ static int check_for_encounter(unsigned char newx, unsigned char newy)
                 monster = 1;
                 break;
             case MAZE_OBJECT_WEAPON:
+                encounter_text = "you found a";
+                encounter_adjective = weapon_type[maze_object[i].tsd.weapon.type].adjective;
+                encounter_name = weapon_type[maze_object[i].tsd.weapon.type].name;
+                break;
             case MAZE_OBJECT_KEY:
             case MAZE_OBJECT_TREASURE:
+            case MAZE_OBJECT_SCROLL:
+            case MAZE_OBJECT_GRENADE:
             case MAZE_OBJECT_ARMOR:
                 encounter_text = "you found a";
                 encounter_adjective = "";
@@ -866,7 +910,7 @@ static void maze_button_pressed(void)
         maze_menu_add_item("FLEE!", MAZE_STATE_FLEE, 1);
     }
     maze_menu_add_item("VIEW MAP", MAZE_DRAW_MAP, 1);
-    maze_menu_add_item("WIELD WEAPON", MAZE_RENDER, 1);
+    maze_menu_add_item("WIELD WEAPON", MAZE_CHOOSE_WEAPON, 1);
     maze_menu_add_item("READ SCROLL", MAZE_RENDER, 1);
     maze_menu_add_item("QUAFF POTION", MAZE_CHOOSE_POTION, 1);
     maze_menu_add_item("NEVER MIND", MAZE_RENDER, 1);
@@ -908,7 +952,10 @@ static void move_player_one_step(int direction)
        if (dist < 100) {
            str = xorshift(&xorshift_state) % 160;
            /* damage = xorshift(&xorshift_state) % maze_object_template[maze_object[player.weapon].type].damage; */
-           damage = xorshift(&xorshift_state) % 20;
+           if (player.weapon == 255) /* fists */
+               damage = 1;
+           else
+               damage = xorshift(&xorshift_state) % weapon_type[maze_object[player.weapon].type].damage;
            combatant.combatx -= dx * (80 + str) / 100;
            combatant.combaty -= dy * (80 + str) / 100;
            if (combatant.combatx < 20)
@@ -1262,9 +1309,19 @@ static void maze_player_defeats_monster(void)
     FbClear();
     FbColor(RED);
     FbMove(10, SCREEN_YDIM / 2 - 10);
-    FbWriteLine(encounter_name);
+    FbWriteLine("you kill the");
     FbMove(10, SCREEN_YDIM / 2);
-    FbWriteLine("DEFEATED!");
+    FbWriteLine(encounter_name);
+    FbMove(10, SCREEN_YDIM / 2 + 10);
+    if (player.weapon == 255) {
+        FbWriteLine("with your fists");
+    } else {
+        FbWriteLine("with the");
+        FbMove(10, SCREEN_YDIM / 2 + 20);
+        FbWriteLine(weapon_type[maze_object[player.weapon].tsd.weapon.type].adjective);
+        FbMove(10, SCREEN_YDIM / 2 + 30);
+        FbWriteLine(weapon_type[maze_object[player.weapon].tsd.weapon.type].name);
+    }
     encounter_text = "x";
     encounter_adjective = "";
     encounter_name = "x";
@@ -1337,6 +1394,44 @@ static void maze_quaff_potion(void)
     FbWriteLine("you feel");
     FbMove(10, SCREEN_YDIM / 2 + 10);
     FbWriteLine(feel);
+    maze_program_state = MAZE_SCREEN_RENDER;
+}
+
+static void maze_choose_weapon(void)
+{
+    int i;
+    char name[20];
+
+    maze_menu_clear();
+    maze_menu.menu_active = 1;
+    strcpy(maze_menu.title, "WIELD WEAPON");
+
+    for (i = 0; i < nmaze_objects; i++) {
+        if (maze_object[i].x == 255 &&
+            maze_object_template[maze_object[i].type].category == MAZE_OBJECT_WEAPON) {
+            strcpy(name, weapon_type[maze_object[i].tsd.weapon.type].adjective);
+            strcat(name, " ");
+            strcat(name, weapon_type[maze_object[i].tsd.weapon.type].name);
+            maze_menu_add_item(name, MAZE_WIELD_WEAPON, i);
+        }
+    }
+    maze_menu_add_item("NEVER MIND", MAZE_RENDER, 255);
+    maze_program_state = MAZE_DRAW_MENU;
+}
+
+static void maze_wield_weapon(void)
+{
+    if (maze_menu.chosen_cookie == 255) { /* never mind */
+        maze_program_state = MAZE_RENDER;
+    }
+    player.weapon = maze_menu.chosen_cookie;
+    FbClear();
+    FbMove(10, SCREEN_YDIM / 2);
+    FbWriteLine("you wield the");
+    FbMove(10, SCREEN_YDIM / 2 + 10);
+    FbWriteLine(weapon_type[maze_object[player.weapon].tsd.weapon.type].adjective);
+    FbMove(10, SCREEN_YDIM / 2 + 20);
+    FbWriteLine(weapon_type[maze_object[player.weapon].tsd.weapon.type].name);
     maze_program_state = MAZE_SCREEN_RENDER;
 }
 
@@ -1533,6 +1628,12 @@ int maze_loop(void)
          break;
     case MAZE_QUAFF_POTION:
          maze_quaff_potion();
+         break;
+    case MAZE_CHOOSE_WEAPON:
+         maze_choose_weapon();
+         break;
+    case MAZE_WIELD_WEAPON:
+         maze_wield_weapon();
          break;
     case MAZE_EXIT:
         maze_program_state = MAZE_GAME_INIT;
