@@ -843,19 +843,12 @@ static int check_for_encounter(unsigned char newx, unsigned char newy)
         if (maze_object[i].x == player.x && maze_object[i].y == player.y) {
             switch(maze_object_template[maze_object[i].type].category) {
             case MAZE_OBJECT_WEAPON:
-               maze_object[i].x = 255; /* Take the object */
-               break;
             case MAZE_OBJECT_KEY:
-               maze_object[i].x = 255; /* Take the object */
-               break;
             case MAZE_OBJECT_POTION:
-               maze_object[i].x = 255; /* Take the object */
-               break;
             case MAZE_OBJECT_TREASURE:
-               maze_object[i].x = 255; /* Take the object */
-               player.gp += maze_object[i].tsd.treasure.gp;
-               break;
             case MAZE_OBJECT_ARMOR:
+            case MAZE_OBJECT_SCROLL:
+            case MAZE_OBJECT_GRENADE:
                maze_object[i].x = 255; /* Take the object */
                break;
             default:
