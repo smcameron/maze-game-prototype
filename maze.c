@@ -68,6 +68,8 @@ enum maze_program_state_t {
     MAZE_QUAFF_POTION,
     MAZE_CHOOSE_WEAPON,
     MAZE_WIELD_WEAPON,
+    MAZE_CHOOSE_ARMOR,
+    MAZE_DON_ARMOR,
     MAZE_EXIT
 };
 static enum maze_program_state_t maze_program_state = MAZE_GAME_INIT;
@@ -119,6 +121,7 @@ static struct player_state {
     unsigned char combatx, combaty;
     unsigned char hitpoints;
     unsigned char weapon;
+    unsigned char armor;
     int gp;
 } player, combatant;
 
@@ -176,6 +179,16 @@ static struct weapon_descriptor {
  { "electro", "cutlass", 0, 0, 30 },
 };
 
+static struct armor_descriptor {
+    char *adjective;
+    char *name;
+    unsigned char protection;
+} armor_type[] = {
+    { "leather", "armor", 2 },
+    { "chainmail", "armor", 5 },
+    { "plate", "armor", 8 },
+};
+
 union maze_object_type_specific_data {
     struct {
         unsigned char hitpoints;
@@ -185,8 +198,8 @@ union maze_object_type_specific_data {
         unsigned char type; /* index into potion_type[] */
     } potion;
     struct {
-        unsigned char protection;
-    } shield;
+        unsigned char type; /* index into armor_type[] */
+    } armor;
     struct {
       unsigned char gp;
     } treasure;
@@ -385,6 +398,7 @@ static void maze_init(void)
     player.y = YDIM - 2;
     player.direction = 0;
     player.weapon = 255;
+    player.armor = 255;
     max_maze_stack_depth = 0;
     memset(maze, 0, sizeof(maze));
     memset(maze_visited, 0, sizeof(maze_visited));
@@ -539,7 +553,7 @@ static void add_random_object(int x, int y)
         maze_object[nmaze_objects].tsd.potion.type = (xorshift(&xorshift_state) % ARRAYSIZE(potion_type));
         break;
     case MAZE_OBJECT_ARMOR:
-        maze_object[nmaze_objects].tsd.shield.protection = (xorshift(&xorshift_state) % 10);
+        maze_object[nmaze_objects].tsd.armor.type = (xorshift(&xorshift_state) % ARRAYSIZE(armor_type));
         break;
     case MAZE_OBJECT_TREASURE:
         maze_object[nmaze_objects].tsd.treasure.gp = (xorshift(&xorshift_state) % 40);
@@ -812,10 +826,13 @@ static int check_for_encounter(unsigned char newx, unsigned char newy)
             case MAZE_OBJECT_TREASURE:
             case MAZE_OBJECT_SCROLL:
             case MAZE_OBJECT_GRENADE:
-            case MAZE_OBJECT_ARMOR:
-                encounter_text = "you found a";
                 encounter_adjective = "";
                 encounter_name = maze_object_template[maze_object[i].type].name;
+                break;
+            case MAZE_OBJECT_ARMOR:
+                encounter_text = "you found a";
+                encounter_adjective = armor_type[maze_object[i].tsd.armor.type].adjective;
+                encounter_name = armor_type[maze_object[i].tsd.armor.type].name;
                 break;
             case MAZE_OBJECT_POTION:
                 encounter_text = "you found a";
@@ -904,6 +921,7 @@ static void maze_button_pressed(void)
     }
     maze_menu_add_item("VIEW MAP", MAZE_DRAW_MAP, 1);
     maze_menu_add_item("WIELD WEAPON", MAZE_CHOOSE_WEAPON, 1);
+    maze_menu_add_item("DON ARMOR", MAZE_CHOOSE_ARMOR, 1);
     maze_menu_add_item("READ SCROLL", MAZE_RENDER, 1);
     maze_menu_add_item("QUAFF POTION", MAZE_CHOOSE_POTION, 1);
     maze_menu_add_item("NEVER MIND", MAZE_RENDER, 1);
@@ -1234,7 +1252,7 @@ static void draw_encounter(void)
 
 static void maze_combat_monster_move(void)
 {
-    int dx, dy, dist, speed, str, damage, hp;
+    int dx, dy, dist, speed, str, damage, hp, protection;
 
     dx = player.combatx - combatant.combatx;
     dy = player.combaty - combatant.combaty;
@@ -1252,7 +1270,17 @@ static void maze_combat_monster_move(void)
             combatant.combaty += speed;
     } else {
         str = xorshift(&xorshift_state) % 160;
+ 
+        if (player.armor == 255)
+            protection = 0;
+        else
+            protection = xorshift(&xorshift_state) % armor_type[maze_object[player.armor].tsd.armor.type].protection;
+
         damage = xorshift(&xorshift_state) % maze_object_template[maze_object[encounter_object].type].damage;
+        damage = damage - protection;
+        if (damage < 0)
+            damage = 0;
+
         player.combatx += dx * (80 + str) / 100;
         player.combaty += dy * (80 + str) / 100;
         if (player.combatx < 20)
@@ -1429,6 +1457,46 @@ static void maze_wield_weapon(void)
     FbWriteLine(weapon_type[maze_object[player.weapon].tsd.weapon.type].adjective);
     FbMove(10, SCREEN_YDIM / 2 + 20);
     FbWriteLine(weapon_type[maze_object[player.weapon].tsd.weapon.type].name);
+    maze_program_state = MAZE_SCREEN_RENDER;
+}
+
+static void maze_choose_armor(void)
+{
+    int i;
+    char name[20];
+
+    maze_menu_clear();
+    maze_menu.menu_active = 1;
+    strcpy(maze_menu.title, "DON ARMOR");
+
+    for (i = 0; i < nmaze_objects; i++) {
+        if (maze_object_template[maze_object[i].type].category != MAZE_OBJECT_ARMOR)
+            continue;
+        if (maze_object[i].x == 255 ||
+            (maze_object[i].x == player.x && maze_object[i].y == player.y)) {
+            strcpy(name, armor_type[maze_object[i].tsd.armor.type].adjective);
+            strcat(name, " ");
+            strcat(name, armor_type[maze_object[i].tsd.armor.type].name);
+            maze_menu_add_item(name, MAZE_DON_ARMOR, i);
+        }
+    }
+    maze_menu_add_item("NEVER MIND", MAZE_RENDER, 255);
+    maze_program_state = MAZE_DRAW_MENU;
+}
+
+static void maze_don_armor(void)
+{
+    if (maze_menu.chosen_cookie == 255) { /* never mind */
+        maze_program_state = MAZE_RENDER;
+    }
+    player.armor = maze_menu.chosen_cookie;
+    FbClear();
+    FbMove(10, SCREEN_YDIM / 2);
+    FbWriteLine("you don the");
+    FbMove(10, SCREEN_YDIM / 2 + 10);
+    FbWriteLine(armor_type[maze_object[player.armor].tsd.armor.type].adjective);
+    FbMove(10, SCREEN_YDIM / 2 + 20);
+    FbWriteLine(armor_type[maze_object[player.armor].tsd.armor.type].name);
     maze_program_state = MAZE_SCREEN_RENDER;
 }
 
@@ -1631,6 +1699,12 @@ int maze_loop(void)
          break;
     case MAZE_WIELD_WEAPON:
          maze_wield_weapon();
+         break;
+    case MAZE_CHOOSE_ARMOR:
+         maze_choose_armor();
+         break;
+    case MAZE_DON_ARMOR:
+         maze_don_armor();
          break;
     case MAZE_EXIT:
         maze_program_state = MAZE_GAME_INIT;
