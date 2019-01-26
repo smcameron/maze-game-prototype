@@ -91,6 +91,7 @@ static unsigned char combat_mode = 0;
 #define NLEVELS 3
 
 static unsigned int maze_random_seed[NLEVELS] = { 0 };
+static int maze_previous_level = -1;
 static int maze_current_level = 0;
 
 #define MAZE_PLACE_PLAYER_DO_NOT_MOVE 0
@@ -387,6 +388,21 @@ static void player_init()
     player.gp = 0;
 }
 
+static void init_maze_objects(void)
+{
+    int i;
+
+    if (maze_previous_level == -1) { /* game is just beginning */
+        nmaze_objects = 0;
+        memset(maze_object, 0, sizeof(maze_object));
+        return;
+    }
+    /* zero out all objects not in player's possession */
+    for (i = 0; i < MAX_MAZE_OBJECTS; i++)
+        if (maze_object[i].x != 255)
+            memset(&maze_object[i], 0, sizeof(maze_object[i]));
+}
+
 /* Initial program state to kick off maze generation */
 static void maze_init(void)
 {
@@ -406,7 +422,7 @@ static void maze_init(void)
     maze_stack_push(player.x, player.y, player.direction);
     maze_program_state = MAZE_BUILD;
     maze_size = 0;
-    nmaze_objects = 0;
+    init_maze_objects();
     combat_mode = 0;
     generation_iterations = 0;
 }
@@ -514,16 +530,29 @@ static int something_here(int x, int y)
 
 static void add_ladder(int ladder_type)
 {
-    int x, y;
+    int i, x, y;
 
     do {
         x = xorshift(&xorshift_state) % XDIM;
         y = xorshift(&xorshift_state) % YDIM;
     } while (!is_passage(x, y) || something_here(x, y));
 
-    maze_object[nmaze_objects].x = x;
-    maze_object[nmaze_objects].y = y;
-    maze_object[nmaze_objects].type = ladder_type;
+    if (nmaze_objects < MAX_MAZE_OBJECTS - 1) {
+        i = nmaze_objects;
+    } else {
+        for (i = 0; i < MAX_MAZE_OBJECTS; i++) {
+            if (maze_object[i].x != 255 &&
+                maze_object[i].type != DOWN_LADDER && maze_object[i].type != UP_LADDER)
+                break;
+        }
+    }
+    if (i >= MAX_MAZE_OBJECTS) { /* Player somehow has all objects */
+        /* now what? */
+    }
+
+    maze_object[i].x = x;
+    maze_object[i].y = y;
+    maze_object[i].type = ladder_type;
 
     if ((maze_player_initial_placement == MAZE_PLACE_PLAYER_BENEATH_UP_LADDER &&
         ladder_type == UP_LADDER) ||
@@ -533,7 +562,8 @@ static void add_ladder(int ladder_type)
         player.y = y;
     }
 
-    nmaze_objects++;
+    if (i >= nmaze_objects - 1)
+        nmaze_objects = i + 1;
 }
 
 static void add_ladders(int level)
@@ -545,39 +575,45 @@ static void add_ladders(int level)
 
 static void add_random_object(int x, int y)
 {
-    int otype;
-    if (nmaze_objects >= MAX_MAZE_OBJECTS - 2) /* Leave 2 for ladders */
+    int otype, i;
+
+    /* Find a free object */
+    for (i = 0; i < MAX_MAZE_OBJECTS; i++)
+       if (maze_object[i].x == 0)
+          break;
+    if (i >= MAX_MAZE_OBJECTS)
         return;
 
-    maze_object[nmaze_objects].x = x;
-    maze_object[nmaze_objects].y = y;
+    maze_object[i].x = x;
+    maze_object[i].y = y;
     otype = xorshift(&xorshift_state) % (nobject_types - 2); /* minus 2 to exclude ladders */
-    maze_object[nmaze_objects].type = otype;
-    switch(maze_object_template[maze_object[nmaze_objects].type].category) {
+    maze_object[i].type = otype;
+    switch(maze_object_template[maze_object[i].type].category) {
     case MAZE_OBJECT_MONSTER:
-        maze_object[nmaze_objects].tsd.monster.hitpoints =
+        maze_object[i].tsd.monster.hitpoints =
             maze_object_template[otype].hitpoints + (xorshift(&xorshift_state) % 5);
-        maze_object[nmaze_objects].tsd.monster.speed =
-            maze_object_template[maze_object[nmaze_objects].type].speed;
+        maze_object[i].tsd.monster.speed =
+            maze_object_template[maze_object[i].type].speed;
         break;
     case MAZE_OBJECT_POTION:
-        maze_object[nmaze_objects].tsd.potion.type = (xorshift(&xorshift_state) % ARRAYSIZE(potion_type));
+        maze_object[i].tsd.potion.type = (xorshift(&xorshift_state) % ARRAYSIZE(potion_type));
         break;
     case MAZE_OBJECT_ARMOR:
-        maze_object[nmaze_objects].tsd.armor.type = (xorshift(&xorshift_state) % ARRAYSIZE(armor_type));
+        maze_object[i].tsd.armor.type = (xorshift(&xorshift_state) % ARRAYSIZE(armor_type));
         break;
     case MAZE_OBJECT_TREASURE:
-        maze_object[nmaze_objects].tsd.treasure.gp = (xorshift(&xorshift_state) % 40);
+        maze_object[i].tsd.treasure.gp = (xorshift(&xorshift_state) % 40);
         break;
     case MAZE_OBJECT_WEAPON:
-        maze_object[nmaze_objects].tsd.weapon.type = (xorshift(&xorshift_state) % ARRAYSIZE(weapon_type));
+        maze_object[i].tsd.weapon.type = (xorshift(&xorshift_state) % ARRAYSIZE(weapon_type));
         break;
     case MAZE_OBJECT_SCROLL:
     case MAZE_OBJECT_GRENADE:
     default:
         break;
     }
-    nmaze_objects++;
+    if (i > nmaze_objects - 1)
+        nmaze_objects = i + 1;
 }
 
 static void print_maze()
@@ -792,6 +828,7 @@ static int go_up_or_down(int direction)
     else if (direction < 0 && maze_current_level <= 0)
         return 0;
 
+    maze_previous_level = maze_current_level;
     maze_current_level += direction;
     maze_program_state = MAZE_LEVEL_INIT;
     maze_player_initial_placement = placement;
@@ -1283,7 +1320,7 @@ static void maze_combat_monster_move(void)
             combatant.combaty += speed;
     } else {
         str = xorshift(&xorshift_state) % 160;
- 
+
         if (player.armor == 255)
             protection = 0;
         else
