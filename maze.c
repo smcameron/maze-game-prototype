@@ -501,6 +501,16 @@ static int random_choice(int chance)
     return (xorshift(&xorshift_state) % 10000) < 100 * chance;
 }
 
+static int something_here(int x, int y)
+{
+    int i;
+
+    for (i = 0; i < nmaze_objects; i++)
+        if (maze_object[i].x == x && maze_object[i].y == y)
+            return 1;
+    return 0;
+}
+
 static void add_ladder(int ladder_type)
 {
     int x, y;
@@ -508,7 +518,7 @@ static void add_ladder(int ladder_type)
     do {
         x = xorshift(&xorshift_state) % XDIM;
         y = xorshift(&xorshift_state) % YDIM;
-    } while (!is_passage(x, y));
+    } while (!is_passage(x, y) || something_here(x, y));
 
     maze_object[nmaze_objects].x = x;
     maze_object[nmaze_objects].y = y;
