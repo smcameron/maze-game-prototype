@@ -408,6 +408,7 @@ static void maze_init(void)
     maze_size = 0;
     nmaze_objects = 0;
     combat_mode = 0;
+    generation_iterations = 0;
 }
 
 /* Returns 1 if (x,y) is empty passage, 0 if solid rock */
