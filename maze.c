@@ -637,7 +637,7 @@ static void generate_maze(void)
             maze_program_state = MAZE_LEVEL_INIT;
             maze_random_seed[maze_current_level] = xorshift(&xorshift_state);
         }
-        add_ladders(0);
+        add_ladders(maze_current_level);
         return;
     }
     *x = nx;
@@ -653,7 +653,7 @@ static void generate_maze(void)
                 maze_program_state = MAZE_LEVEL_INIT;
                 maze_random_seed[maze_current_level] = xorshift(&xorshift_state);
             }
-            add_ladders(0);
+            add_ladders(maze_current_level);
             return;
         }
     }
