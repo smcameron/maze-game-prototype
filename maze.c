@@ -70,6 +70,10 @@ enum maze_program_state_t {
     MAZE_WIELD_WEAPON,
     MAZE_CHOOSE_ARMOR,
     MAZE_DON_ARMOR,
+    MAZE_CHOOSE_TAKE_OBJECT,
+    MAZE_CHOOSE_DROP_OBJECT,
+    MAZE_TAKE_OBJECT,
+    MAZE_DROP_OBJECT,
     MAZE_EXIT
 };
 static enum maze_program_state_t maze_program_state = MAZE_GAME_INIT;
@@ -518,6 +522,22 @@ static int random_choice(int chance)
     return (xorshift(&xorshift_state) % 10000) < 100 * chance;
 }
 
+static int object_is_portable(int i)
+{
+    switch(maze_object_template[maze_object[i].type].category) {
+    case MAZE_OBJECT_WEAPON:
+    case MAZE_OBJECT_KEY:
+    case MAZE_OBJECT_POTION:
+    case MAZE_OBJECT_TREASURE:
+    case MAZE_OBJECT_ARMOR:
+    case MAZE_OBJECT_SCROLL:
+    case MAZE_OBJECT_GRENADE:
+        return 1;
+    default:
+        return 0;
+    }
+}
+
 static int something_here(int x, int y)
 {
     int i;
@@ -876,6 +896,7 @@ static int check_for_encounter(unsigned char newx, unsigned char newy)
             case MAZE_OBJECT_TREASURE:
             case MAZE_OBJECT_SCROLL:
             case MAZE_OBJECT_GRENADE:
+                encounter_text = "you found a";
                 encounter_adjective = "";
                 encounter_name = maze_object_template[maze_object[i].type].name;
                 break;
@@ -906,22 +927,6 @@ static int check_for_encounter(unsigned char newx, unsigned char newy)
                 break;
             }
         }
-        /* If we are just about to move off of a square where an object is... */
-        if (maze_object[i].x == player.x && maze_object[i].y == player.y) {
-            switch(maze_object_template[maze_object[i].type].category) {
-            case MAZE_OBJECT_WEAPON:
-            case MAZE_OBJECT_KEY:
-            case MAZE_OBJECT_POTION:
-            case MAZE_OBJECT_TREASURE:
-            case MAZE_OBJECT_ARMOR:
-            case MAZE_OBJECT_SCROLL:
-            case MAZE_OBJECT_GRENADE:
-               maze_object[i].x = 255; /* Take the object */
-               break;
-            default:
-               break;
-            }
-        }
     }
     return monster;
 }
@@ -932,6 +937,8 @@ static void maze_button_pressed(void)
 
     int newx, newy;
     int monster_present = 0;
+    int takeable_object_count = 0;
+    int droppable_object_count = 0;
 
     if (player.hitpoints == 0)
         return;
@@ -957,24 +964,39 @@ static void maze_button_pressed(void)
             case MAZE_OBJECT_MONSTER:
                  monster_present = 1;
                  break;
+            case MAZE_OBJECT_WEAPON:
+            case MAZE_OBJECT_KEY:
+            case MAZE_OBJECT_POTION:
+            case MAZE_OBJECT_TREASURE:
+            case MAZE_OBJECT_ARMOR:
+            case MAZE_OBJECT_SCROLL:
+            case MAZE_OBJECT_GRENADE:
+                 takeable_object_count++;
+                 break;
             default:
                  break;
             }
         }
+        if (maze_object[i].x == 255 && object_is_portable(i))
+           droppable_object_count++;
         if (maze_object[i].x == newx && maze_object[i].y == newy &&
             maze_object_template[maze_object[i].type].category == MAZE_OBJECT_MONSTER)
             monster_present = 1;
     }
+    maze_menu_add_item("NEVER MIND", MAZE_RENDER, 1);
     if (monster_present) {
         maze_menu_add_item("FIGHT MONSTER!", MAZE_STATE_FIGHT, 1);
         maze_menu_add_item("FLEE!", MAZE_STATE_FLEE, 1);
     }
+    if (takeable_object_count > 0)
+        maze_menu_add_item("TAKE ITEM", MAZE_CHOOSE_TAKE_OBJECT, takeable_object_count);
+    if (droppable_object_count > 0)
+        maze_menu_add_item("DROP OBJECT",  MAZE_CHOOSE_DROP_OBJECT, 1);
     maze_menu_add_item("VIEW MAP", MAZE_DRAW_MAP, 1);
     maze_menu_add_item("WIELD WEAPON", MAZE_CHOOSE_WEAPON, 1);
     maze_menu_add_item("DON ARMOR", MAZE_CHOOSE_ARMOR, 1);
     maze_menu_add_item("READ SCROLL", MAZE_RENDER, 1);
     maze_menu_add_item("QUAFF POTION", MAZE_CHOOSE_POTION, 1);
-    maze_menu_add_item("NEVER MIND", MAZE_RENDER, 1);
     maze_menu_add_item("EXIT GAME", MAZE_EXIT, 255);
     maze_menu.menu_active = 1;
     maze_program_state = MAZE_DRAW_MENU;
@@ -1669,6 +1691,104 @@ static void maze_begin_fight()
     maze_program_state = MAZE_RENDER_COMBAT;
 }
 
+static void maze_choose_take_or_drop_object(char *title, enum maze_program_state_t next_state)
+{
+    int i, limit;
+    char name[20];
+
+    maze_menu_clear();
+    maze_menu.menu_active = 1;
+    strcpy(maze_menu.title, title);
+
+    limit = nmaze_objects;
+    if (limit > 10)
+        limit = 10;
+    maze_menu_add_item("NEVER MIND", MAZE_RENDER, 255);
+    for (i = 0; i < nmaze_objects; i++) {
+        if ((next_state == MAZE_TAKE_OBJECT && maze_object[i].x == player.x && maze_object[i].y == player.y) ||
+            (next_state == MAZE_DROP_OBJECT && maze_object[i].x == 255)) {
+            switch(maze_object_template[maze_object[i].type].category) {
+            case MAZE_OBJECT_WEAPON:
+                strcpy(name, weapon_type[maze_object[i].tsd.weapon.type].adjective);
+                strcat(name, " ");
+                strcat(name, weapon_type[maze_object[i].tsd.weapon.type].name);
+                break;
+            case MAZE_OBJECT_KEY:
+                strcpy(name, "key");
+                break;
+            case MAZE_OBJECT_POTION:
+                strcpy(name, potion_type[maze_object[i].tsd.potion.type].adjective);
+                strcat(name, " potion");
+                maze_menu_add_item(name, MAZE_QUAFF_POTION, i);
+                break;
+            case MAZE_OBJECT_TREASURE:
+                strcpy(name, "chest");
+                break;
+            case MAZE_OBJECT_ARMOR:
+                strcpy(name, armor_type[maze_object[i].tsd.armor.type].adjective);
+                strcat(name, " ");
+                strcat(name, armor_type[maze_object[i].tsd.armor.type].name);
+                break;
+            case MAZE_OBJECT_SCROLL:
+                strcpy(name, "scroll");
+                break;
+            case MAZE_OBJECT_GRENADE:
+                strcpy(name, "grenade");
+                break;
+            default:
+                continue;
+            }
+            maze_menu_add_item(name, next_state, i);
+            limit--;
+            if (limit == 0) /* Don't make the menu too big. */
+                break;
+        }
+    }
+    maze_program_state = MAZE_DRAW_MENU;
+}
+
+static void maze_choose_take_object(void)
+{
+    maze_choose_take_or_drop_object("TAKE OBJECT", MAZE_TAKE_OBJECT);
+}
+
+static void maze_choose_drop_object(void)
+{
+    maze_choose_take_or_drop_object("DROP OBJECT", MAZE_DROP_OBJECT);
+}
+
+static void maze_take_object(void)
+{
+    int i;
+
+    i = maze_menu.chosen_cookie;
+    maze_object[i].x = 255; /* Take object */
+    maze_program_state = MAZE_RENDER;
+
+    switch(maze_object_template[maze_object[i].type].category) {
+    case MAZE_OBJECT_TREASURE:
+        player.gp += maze_object[i].tsd.treasure.gp;
+        maze_object[i].tsd.treasure.gp = 0; /* you can't get infinite gp by repeatedly dropping and taking treasure */
+        break;
+    default:
+        break;
+    }
+}
+
+static void maze_drop_object(void)
+{
+    int i;
+
+    i = maze_menu.chosen_cookie;
+    maze_object[i].x = player.x;
+    maze_object[i].y = player.y;
+    maze_program_state = MAZE_RENDER;
+    if (player.weapon == i)
+        player.weapon = 255;
+    if (player.armor == i)
+       player.armor = 255;
+}
+
 int maze_loop(void)
 {
     switch (maze_program_state) {
@@ -1755,6 +1875,18 @@ int maze_loop(void)
          break;
     case MAZE_DON_ARMOR:
          maze_don_armor();
+         break;
+    case MAZE_CHOOSE_TAKE_OBJECT:
+         maze_choose_take_object();
+         break;
+    case MAZE_CHOOSE_DROP_OBJECT:
+         maze_choose_drop_object();
+         break;
+    case MAZE_TAKE_OBJECT:
+         maze_take_object();
+         break;
+    case MAZE_DROP_OBJECT:
+         maze_drop_object();
          break;
     case MAZE_EXIT:
         maze_program_state = MAZE_GAME_INIT;
