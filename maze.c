@@ -299,7 +299,7 @@ static struct maze_object_template maze_object_template[] = {
     { "DRAGON", GREEN, MAZE_OBJECT_MONSTER, dragon_points, ARRAYSIZE(dragon_points), 8, 40, 20 },
     { "CHEST", YELLOW, MAZE_OBJECT_TREASURE, chest_points, ARRAYSIZE(chest_points), 0, 0, 0 },
     { "COBRA", GREEN, MAZE_OBJECT_MONSTER, cobra_points, ARRAYSIZE(cobra_points), 2, 5, 10 },
-    { "HOLY GRENADE", YELLOW, MAZE_OBJECT_WEAPON, grenade_points, ARRAYSIZE(grenade_points), 0, 0, 20 },
+    { "HOLY GRENADE", YELLOW, MAZE_OBJECT_GRENADE, grenade_points, ARRAYSIZE(grenade_points), 0, 0, 20 },
     { "KEY", YELLOW, MAZE_OBJECT_KEY, key_points, ARRAYSIZE(key_points), 0, 0, 0 },
     { "SCARY ORC", GREEN, MAZE_OBJECT_MONSTER, orc_points, ARRAYSIZE(orc_points), 4, 15, 15 },
     { "PHANTASM", WHITE, MAZE_OBJECT_MONSTER, phantasm_points, ARRAYSIZE(phantasm_points), 6, 15, 4 },
