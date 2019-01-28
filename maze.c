@@ -1053,14 +1053,14 @@ static void move_player_one_step(int direction)
                damage = xorshift(&xorshift_state) % weapon_type[maze_object[player.weapon].type].damage;
            combatant.combatx -= dx * (80 + str) / 100;
            combatant.combaty -= dy * (80 + str) / 100;
-           if (combatant.combatx < 20)
-              combatant.combatx += 20;
-           if (combatant.combatx > SCREEN_XDIM - 20)
-              combatant.combatx -= 20;
-           if (combatant.combaty < 20)
-              combatant.combaty += 20;
-           if (combatant.combaty > SCREEN_XDIM - 20)
-              combatant.combaty -= 20;
+           if (combatant.combatx < 40)
+              combatant.combatx += 40;
+           if (combatant.combatx > SCREEN_XDIM - 40)
+              combatant.combatx -= 40;
+           if (combatant.combaty < 40)
+              combatant.combaty += 40;
+           if (combatant.combaty > SCREEN_XDIM - 40)
+              combatant.combaty -= 40;
            hp = combatant.hitpoints - damage;
            if (hp < 0)
               hp = 0;
@@ -1367,14 +1367,14 @@ static void maze_combat_monster_move(void)
 
         player.combatx += dx * (80 + str) / 100;
         player.combaty += dy * (80 + str) / 100;
-        if (player.combatx < 20)
-           player.combatx += 20;
-        if (player.combatx > SCREEN_XDIM - 20)
-           player.combatx -= 20;
-        if (player.combaty < 20)
-           player.combaty += 20;
-        if (player.combaty > SCREEN_XDIM - 20)
-           player.combaty -= 20;
+        if (player.combatx < 40)
+           player.combatx += 40;
+        if (player.combatx > SCREEN_XDIM - 40)
+           player.combatx -= 40;
+        if (player.combaty < 40)
+           player.combaty += 40;
+        if (player.combaty > SCREEN_XDIM - 40)
+           player.combaty -= 40;
         hp = player.hitpoints - damage;
         if (hp < 0)
            hp = 0;
@@ -1696,9 +1696,9 @@ static void maze_begin_fight()
 {
     combat_mode = 1;
     player.combatx = SCREEN_XDIM / 2;
-    player.combaty = SCREEN_YDIM - 20;
+    player.combaty = SCREEN_YDIM - 40;
     combatant.combatx = SCREEN_XDIM / 2;
-    combatant.combaty = 20;
+    combatant.combaty = 50;
     combatant.hitpoints = maze_object[encounter_object].tsd.monster.hitpoints;
     maze_program_state = MAZE_RENDER_COMBAT;
 }
