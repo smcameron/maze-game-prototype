@@ -896,34 +896,46 @@ static int check_for_encounter(unsigned char newx, unsigned char newy)
             case MAZE_OBJECT_TREASURE:
             case MAZE_OBJECT_SCROLL:
             case MAZE_OBJECT_GRENADE:
-                encounter_text = "you found a";
-                encounter_adjective = "";
-                encounter_name = maze_object_template[maze_object[i].type].name;
+                if (!monster) {
+                    encounter_text = "you found a";
+                    encounter_adjective = "";
+                    encounter_name = maze_object_template[maze_object[i].type].name;
+                }
                 break;
             case MAZE_OBJECT_ARMOR:
-                encounter_text = "you found a";
-                encounter_adjective = armor_type[maze_object[i].tsd.armor.type].adjective;
-                encounter_name = armor_type[maze_object[i].tsd.armor.type].name;
+                if (!monster) {
+                    encounter_text = "you found a";
+                    encounter_adjective = armor_type[maze_object[i].tsd.armor.type].adjective;
+                    encounter_name = armor_type[maze_object[i].tsd.armor.type].name;
+                }
                 break;
             case MAZE_OBJECT_POTION:
-                encounter_text = "you found a";
-                encounter_adjective = potion_type[maze_object[i].tsd.potion.type].adjective;
-                encounter_name = "potion";
+                if (!monster) {
+                    encounter_text = "you found a";
+                    encounter_adjective = potion_type[maze_object[i].tsd.potion.type].adjective;
+                    encounter_name = "potion";
+                }
                 break;
             case MAZE_OBJECT_DOWN_LADDER:
-                encounter_text = "a ladder";
-                encounter_adjective = "";
-                encounter_name = "leads down";
+                if (!monster) {
+                    encounter_text = "a ladder";
+                    encounter_adjective = "";
+                    encounter_name = "leads down";
+                }
                 break;
             case MAZE_OBJECT_UP_LADDER:
-                encounter_text = "a ladder";
-                encounter_adjective = "";
-                encounter_name = "leads up";
+                if (!monster) {
+                    encounter_text = "a ladder";
+                    encounter_adjective = "";
+                    encounter_name = "leads up";
+                }
                 break;
             default:
-                encounter_text = "you found something";
-                encounter_adjective = "";
-                encounter_name = maze_object_template[maze_object[i].type].name;
+                if (!monster) {
+                    encounter_text = "you found something";
+                    encounter_adjective = "";
+                    encounter_name = maze_object_template[maze_object[i].type].name;
+                }
                 break;
             }
         }
