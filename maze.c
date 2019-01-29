@@ -1518,7 +1518,11 @@ static void maze_choose_weapon(void)
             continue;
         if (maze_object[i].x == 255 ||
             (maze_object[i].x == player.x && maze_object[i].y == player.y)) {
-            strcpy(name, weapon_type[maze_object[i].tsd.weapon.type].adjective);
+            if (player.weapon == i)
+               strcpy(name, "-");
+            else
+               strcpy(name, " ");
+            strcat(name, weapon_type[maze_object[i].tsd.weapon.type].adjective);
             strcat(name, " ");
             strcat(name, weapon_type[maze_object[i].tsd.weapon.type].name);
             maze_menu_add_item(name, MAZE_WIELD_WEAPON, i);
@@ -1559,7 +1563,11 @@ static void maze_choose_armor(void)
             continue;
         if (maze_object[i].x == 255 ||
             (maze_object[i].x == player.x && maze_object[i].y == player.y)) {
-            strcpy(name, armor_type[maze_object[i].tsd.armor.type].adjective);
+            if (player.armor == i)
+               strcpy(name, "-");
+            else
+               strcpy(name, " ");
+            strcat(name, armor_type[maze_object[i].tsd.armor.type].adjective);
             strcat(name, " ");
             strcat(name, armor_type[maze_object[i].tsd.armor.type].name);
             maze_menu_add_item(name, MAZE_DON_ARMOR, i);
@@ -1723,7 +1731,11 @@ static void maze_choose_take_or_drop_object(char *title, enum maze_program_state
             (next_state == MAZE_DROP_OBJECT && maze_object[i].x == 255)) {
             switch(maze_object_template[maze_object[i].type].category) {
             case MAZE_OBJECT_WEAPON:
-                strcpy(name, weapon_type[maze_object[i].tsd.weapon.type].adjective);
+                if (i == player.weapon)
+                    strcpy(name, "-");
+                else
+                    strcpy(name, " ");
+                strcat(name, weapon_type[maze_object[i].tsd.weapon.type].adjective);
                 strcat(name, " ");
                 strcat(name, weapon_type[maze_object[i].tsd.weapon.type].name);
                 break;
@@ -1739,7 +1751,11 @@ static void maze_choose_take_or_drop_object(char *title, enum maze_program_state
                 strcpy(name, "chest");
                 break;
             case MAZE_OBJECT_ARMOR:
-                strcpy(name, armor_type[maze_object[i].tsd.armor.type].adjective);
+                if (i == player.armor)
+                    strcpy(name, "-");
+                else
+                    strcpy(name, " ");
+                strcat(name, armor_type[maze_object[i].tsd.armor.type].adjective);
                 strcat(name, " ");
                 strcat(name, armor_type[maze_object[i].tsd.armor.type].name);
                 break;
