@@ -390,6 +390,8 @@ static void player_init()
 {
     player.hitpoints = 255;
     player.gp = 0;
+    player.weapon = 255;
+    player.armor = 255;
 }
 
 static void init_maze_objects(void)
@@ -417,8 +419,6 @@ static void maze_init(void)
     player.x = XDIM / 2;
     player.y = YDIM - 2;
     player.direction = 0;
-    player.weapon = 255;
-    player.armor = 255;
     max_maze_stack_depth = 0;
     memset(maze, 0, sizeof(maze));
     memset(maze_visited, 0, sizeof(maze_visited));
