@@ -1725,7 +1725,6 @@ static void maze_choose_take_or_drop_object(char *title, enum maze_program_state
     limit = nmaze_objects;
     if (limit > 10)
         limit = 10;
-    maze_menu_add_item("NEVER MIND", MAZE_RENDER, 255);
     for (i = 0; i < nmaze_objects; i++) {
         if ((next_state == MAZE_TAKE_OBJECT && maze_object[i].x == player.x && maze_object[i].y == player.y) ||
             (next_state == MAZE_DROP_OBJECT && maze_object[i].x == 255)) {
@@ -1773,6 +1772,7 @@ static void maze_choose_take_or_drop_object(char *title, enum maze_program_state
                 break;
         }
     }
+    maze_menu_add_item("NEVER MIND", MAZE_RENDER, 255);
     maze_program_state = MAZE_DRAW_MENU;
 }
 
