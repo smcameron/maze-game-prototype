@@ -1534,6 +1534,7 @@ static void maze_wield_weapon(void)
         maze_program_state = MAZE_RENDER;
     }
     player.weapon = maze_menu.chosen_cookie;
+    maze_object[player.weapon].x = 255; /* In case we wield directly from dungeon floor */
     FbClear();
     FbMove(10, SCREEN_YDIM / 2);
     FbWriteLine("you wield the");
@@ -1574,6 +1575,7 @@ static void maze_don_armor(void)
         maze_program_state = MAZE_RENDER;
     }
     player.armor = maze_menu.chosen_cookie;
+    maze_object[player.armor].x = 255; /* In case we don directly from dungeon floor */
     FbClear();
     FbMove(10, SCREEN_YDIM / 2);
     FbWriteLine("you don the");
