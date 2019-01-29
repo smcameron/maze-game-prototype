@@ -786,6 +786,7 @@ static void draw_object(struct point drawing[], int npoints, int scale_index, in
 static void draw_left_passage(int start, int scale)
 {
     FbVerticalLine(start, start, start, SCREEN_YDIM - 1 - start);
+    FbVerticalLine(start + scale, start + scale, start + scale, SCREEN_YDIM - 1 - (start + scale));
     FbHorizontalLine(start, start + scale, start + scale, start + scale);
     FbHorizontalLine(start, SCREEN_YDIM - 1 - (start + scale), start + scale, SCREEN_YDIM - 1 - (start + scale));
 }
@@ -793,20 +794,19 @@ static void draw_left_passage(int start, int scale)
 static void draw_right_passage(int start, int scale)
 {
     FbVerticalLine(SCREEN_XDIM - 1 - start, start, SCREEN_XDIM - 1 - start, SCREEN_YDIM - 1 - start);
+    FbVerticalLine(SCREEN_XDIM - 1 - start - scale, start + scale, SCREEN_XDIM - 1 - start - scale, SCREEN_YDIM - 1 - start - scale);
     FbHorizontalLine(SCREEN_XDIM - 1 - (start + scale), start + scale, SCREEN_XDIM - 1 - start, start + scale);
     FbHorizontalLine(SCREEN_XDIM - 1 - (start + scale), SCREEN_YDIM - 1 - (start + scale), SCREEN_XDIM - 1 - start, SCREEN_YDIM - 1 - (start + scale));
 }
 
 static void draw_left_wall(int start, int scale)
 {
-    FbVerticalLine(start, start, start, SCREEN_YDIM - 1 - start);
     FbLine(start, start, start + scale, start + scale);
     FbLine(start, SCREEN_YDIM - 1 - start, start + scale, SCREEN_YDIM - 1 - (start + scale));
 }
 
 static void draw_right_wall(int start, int scale)
 {
-    FbVerticalLine(SCREEN_XDIM - 1 - start, start, SCREEN_XDIM - 1 - start, SCREEN_YDIM - 1 - start);
     FbLine(SCREEN_XDIM - 1 - start, start, SCREEN_XDIM - 1 - (start + scale), start + scale);
     FbLine(SCREEN_XDIM - 1 - start, SCREEN_YDIM - 1 - start, SCREEN_XDIM - 1 - (start + scale), SCREEN_YDIM - 1 - (start + scale));
 }
