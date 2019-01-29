@@ -1745,7 +1745,6 @@ static void maze_choose_take_or_drop_object(char *title, enum maze_program_state
             case MAZE_OBJECT_POTION:
                 strcpy(name, potion_type[maze_object[i].tsd.potion.type].adjective);
                 strcat(name, " potion");
-                maze_menu_add_item(name, MAZE_QUAFF_POTION, i);
                 break;
             case MAZE_OBJECT_TREASURE:
                 strcpy(name, "chest");
