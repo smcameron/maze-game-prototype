@@ -1085,70 +1085,9 @@ static void maze_menu_change_current_selection(int direction)
 
 static void process_commands(void)
 {
-#ifdef __linux__
-    int kp;
-#endif
     int base_direction;
 
     base_direction = combat_mode ? 0 : player.direction;
-#ifdef __linux__
-
-    wait_for_keypress();
-    kp = get_keypress();
-    if (kp < 0) {
-        maze_program_state = MAZE_EXIT;
-        return;
-    }
-    switch (kp) {
-    case 'w':
-        if (maze_menu.menu_active)
-            maze_menu_change_current_selection(-1);
-        else
-            move_player_one_step(base_direction);
-        break;
-    case 's':
-        if (maze_menu.menu_active)
-            maze_menu_change_current_selection(1);
-        else
-            move_player_one_step(normalize_direction(base_direction + 4));
-        break;
-    case 'a':
-        if (combat_mode)
-            move_player_one_step(6);
-        else
-           player.direction = left_dir(player.direction);
-        break;
-    case 'd':
-        if (combat_mode)
-            move_player_one_step(2);
-        else
-            player.direction = right_dir(player.direction);
-        break;
-    case 'm':
-        maze_program_state = MAZE_DRAW_MAP;
-        return;
-    case ' ':
-        maze_button_pressed();
-        break;
-    case 'c':
-        if (go_down())
-            return;
-        else
-           maze_program_state = MAZE_RENDER;
-        break;
-    case 'e':
-        if (go_up())
-           return;
-        else
-           maze_program_state = MAZE_RENDER;
-        break;
-    case 'q':
-        maze_program_state = MAZE_EXIT;
-        return;
-    default:
-        break;
-    }
-#else
 
     if (BUTTON_PRESSED_AND_CONSUME) {
         maze_button_pressed();
@@ -1175,8 +1114,6 @@ static void process_commands(void)
     } else {
         return;
     }
-
-#endif
 
     if (player.hitpoints == 0) {
         maze_program_state = MAZE_GAME_INIT;
@@ -1928,10 +1865,7 @@ int maze_loop(void)
 #ifdef __linux__
 int main(int argc, char *argv[])
 {
-    do {
-        if (maze_loop())
-            return 0;
-    } while (1);
-    return 0;
+        start_gtk(&argc, &argv, maze_loop);
+        return 0;
 }
 #endif
