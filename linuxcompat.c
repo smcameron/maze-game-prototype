@@ -7,16 +7,20 @@
 #include <termios.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <pthread.h>
 #include <errno.h>
+
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
 
 #include "bline.h"
 #include "linuxcompat.h"
 
+#define FIFO_TO_BADGE "/tmp/fifo-to-badge"
 
 #define font_2_width 8
 #define font_2_height 336
@@ -261,10 +265,33 @@ static void *read_from_fifo(void *thread_info)
 	int rc, count, bytesleft;
 	unsigned int buffer;
 	unsigned char *buf = (unsigned char *) &buffer;
+	struct stat s;
 
-	fifo_fd = open("/tmp/badge-ir-fifo", O_RDONLY);
+	rc = stat(FIFO_TO_BADGE, &s);
+	if (!rc) {
+		if (!S_ISFIFO(s.st_mode)) {
+			fprintf(stderr, "%s exists, but is not a named pipe.\n", FIFO_TO_BADGE);
+			exit(1);
+		}
+	} else {
+		if (errno != ENOENT) {
+			fprintf(stderr, "Failed to stat %s: %s\n", FIFO_TO_BADGE, strerror(errno));
+			exit(1);
+		}
+	}
+
+try_again:
+	fifo_fd = open(FIFO_TO_BADGE, O_RDONLY);
 	if (fifo_fd < 0) {
-		fprintf(stderr, "Failed to open /tmp/badge-ir-fifo: %s\n", strerror(errno));
+		if (errno == ENOENT) {
+			rc = mkfifo(FIFO_TO_BADGE, 0644);
+			if (rc) {
+				fprintf(stderr, "Failed to create fifo %s\n", FIFO_TO_BADGE);
+				exit(1);
+			}
+			goto try_again;
+		}
+		fprintf(stderr, "Failed to open %s: %s\n", FIFO_TO_BADGE, strerror(errno));
 		exit(1);
 		return NULL;
 	}
@@ -277,7 +304,7 @@ static void *read_from_fifo(void *thread_info)
 			if (rc < 0 && errno == EINTR)
 				continue;
 			if (rc < 0) {
-				fprintf(stderr, "Failed to read from /tmp/badge-ir-fifo: %s\n", strerror(errno));
+				fprintf(stderr, "Failed to read from %s: %s\n", FIFO_TO_BADGE, strerror(errno));
 				exit(1);
 				break;
 			}
