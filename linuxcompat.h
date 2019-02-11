@@ -9,8 +9,6 @@ void FbLine(unsigned char x1, unsigned char y1, unsigned char x2, unsigned char 
 void FbHorizontalLine(unsigned char x1, unsigned char y1, unsigned char x2, unsigned char y2);
 void FbVerticalLine(unsigned char x1, unsigned char y1, unsigned char x2, unsigned char y2);
 void FbClear(void);
-void restore_original_input_mode(void);
-void set_nonblocking_input_mode(void);
 void FbMove(unsigned char x, unsigned char y);
 void FbWriteLine(char *s);
 void itoa(char *string, int value, int base);
