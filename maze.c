@@ -1865,7 +1865,7 @@ int maze_loop(void)
 #ifdef __linux__
 int main(int argc, char *argv[])
 {
-        start_gtk(&argc, &argv, maze_loop);
+        start_gtk(&argc, &argv, maze_loop, 240);
         return 0;
 }
 #endif

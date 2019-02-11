@@ -60,7 +60,6 @@ static GdkGC *gc = NULL;               /* our graphics context. */
 static int screen_offset_x = 0;
 static int screen_offset_y = 0;
 static gint timer_tag;
-static int frame_rate_hz = 30;
 #define NCOLORS 8 
 GdkColor huex[NCOLORS];
 static int (*badge_function)(void);
@@ -497,14 +496,14 @@ static gint advance_game(__attribute__((unused)) gpointer data)
 	return TRUE;
 }
 
-void start_gtk(int *argc, char ***argv, int (*main_badge_function)(void))
+void start_gtk(int *argc, char ***argv, int (*main_badge_function)(void), int callback_hz)
 {
 	gtk_set_locale();
 	gtk_init(argc, argv);
 	setup_gtk_colors();
 	setup_gtk_window_and_drawing_area(&window, &vbox, &drawing_area);
 	badge_function = main_badge_function;
-	timer_tag = g_timeout_add(1000 / frame_rate_hz, advance_game, NULL);
+	timer_tag = g_timeout_add(1000 / callback_hz, advance_game, NULL);
 
 	/* Apparently (some versions of?) portaudio calls g_thread_init(). */
 	/* It may only be called once, and subsequent calls abort, so */

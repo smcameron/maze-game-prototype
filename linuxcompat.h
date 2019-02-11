@@ -28,7 +28,7 @@ void disable_interrupts(void);
 void enable_interrupts(void);
 void send_ir_packet(unsigned int packet);
 unsigned int get_badge_id(void);
-void start_gtk(int *argc, char ***argv, int (*main_badge_function)(void));
+void start_gtk(int *argc, char ***argv, int (*main_badge_function)(void), int callback_hz);
 
 #define BLUE    0
 #define GREEN   1
