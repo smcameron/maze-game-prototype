@@ -350,19 +350,19 @@ void returnToMenus(void)
 	exit(0);
 }
 
-static void ir_packet_ignore(unsigned int packet)
+static void ir_packet_ignore(struct IRpacket_t packet)
 {
 }
 
-static void (*ir_packet_callback)(unsigned int) = ir_packet_ignore;
+static void (*ir_packet_callback)(struct IRpacket_t) = ir_packet_ignore;
 
 
-void register_ir_packet_callback(void (*callback)(unsigned int))
+void register_ir_packet_callback(void (*callback)(struct IRpacket_t))
 {
 	ir_packet_callback = callback;
 }
 
-void unregister_ir_packet_callback(void (*callback)(unsigned int))
+void unregister_ir_packet_callback(void)
 {
 	ir_packet_callback = ir_packet_ignore;
 }
@@ -372,7 +372,7 @@ static int fifo_fd = -1;
 static void *read_from_fifo(void *thread_info)
 {
 	int rc, count, bytesleft;
-	unsigned int buffer;
+	struct IRpacket_t buffer;
 	unsigned char *buf = (unsigned char *) &buffer;
 	struct stat s;
 
@@ -456,9 +456,9 @@ void enable_interrupts(void)
 	pthread_mutex_unlock(&interrupt_mutex);
 }
 
-void send_ir_packet(unsigned int packet)
+void IRqueueSend(union IRpacket_u packet)
 {
-	printf("Send packet to base station: 0x%08x\n", packet);
+	printf("Send packet to base station: 0x%08x\n", packet.v);
 }
 
 unsigned int get_badge_id(void)
