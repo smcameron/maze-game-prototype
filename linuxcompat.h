@@ -32,16 +32,16 @@ void start_gtk(int *argc, char ***argv, int (*main_badge_function)(void), int ca
 #define MAGENTA 7
 
 int button_pressed_and_consume();
-int top_tap_and_consume();
-int bottom_tap_and_consume();
-int left_tap_and_consume();
-int right_tap_and_consume();
+int up_btn_and_consume();
+int down_btn_and_consume();
+int left_btn_and_consume();
+int right_btn_and_consume();
 
 #define BUTTON_PRESSED_AND_CONSUME button_pressed_and_consume()
-#define TOP_TAP_AND_CONSUME top_tap_and_consume()
-#define BOTTOM_TAP_AND_CONSUME bottom_tap_and_consume()
-#define LEFT_TAP_AND_CONSUME left_tap_and_consume()
-#define RIGHT_TAP_AND_CONSUME right_tap_and_consume()
+#define DOWN_BTN_AND_CONSUME down_btn_and_consume()
+#define UP_BTN_AND_CONSUME up_btn_and_consume()
+#define LEFT_BTN_AND_CONSUME left_btn_and_consume()
+#define RIGHT_BTN_AND_CONSUME right_btn_and_consume()
 
 struct IRpacket_t {
 	/* Note: this is different than what the badge code actually uses.

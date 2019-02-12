@@ -22,15 +22,13 @@
 #include <stdio.h>
 #include <sys/time.h> /* for gettimeofday */
 #include <string.h> /* for memset */
-#endif
 
-#ifdef __linux__
 #include "linuxcompat.h"
 #include "bline.h"
 #else
 #include "colors.h"
 #include "menu.h"
-#include "touchCTMU.h"
+#include "buttons.h"
 #endif
 
 #include "build_bug_on.h"
@@ -1091,22 +1089,22 @@ static void process_commands(void)
 
     if (BUTTON_PRESSED_AND_CONSUME) {
         maze_button_pressed();
-    } else if (TOP_TAP_AND_CONSUME) {
+    } else if (UP_BTN_AND_CONSUME) {
         if (maze_menu.menu_active)
             maze_menu_change_current_selection(-1);
         else
             move_player_one_step(base_direction);
-    } else if (BOTTOM_TAP_AND_CONSUME) {
+    } else if (DOWN_BTN_AND_CONSUME) {
         if (maze_menu.menu_active)
             maze_menu_change_current_selection(1);
         else
             move_player_one_step(normalize_direction(base_direction + 4));
-    } else if (LEFT_TAP_AND_CONSUME) {
+    } else if (LEFT_BTN_AND_CONSUME) {
         if (combat_mode)
             move_player_one_step(6);
         else
             player.direction = left_dir(player.direction);
-    } else if (RIGHT_TAP_AND_CONSUME) {
+    } else if (RIGHT_BTN_AND_CONSUME) {
         if (combat_mode)
             move_player_one_step(2);
         else

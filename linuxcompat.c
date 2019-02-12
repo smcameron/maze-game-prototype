@@ -671,22 +671,22 @@ int button_pressed_and_consume()
 	return generic_button_pressed(BUTTON);
 }
 
-int top_tap_and_consume()
+int up_btn_and_consume()
 {
 	return generic_button_pressed(UP);
 }
 
-int bottom_tap_and_consume()
+int down_btn_and_consume()
 {
 	return generic_button_pressed(DOWN);
 }
 
-int left_tap_and_consume()
+int left_btn_and_consume()
 {
 	return generic_button_pressed(LEFT);
 }
 
-int right_tap_and_consume()
+int right_btn_and_consume()
 {
 	return generic_button_pressed(RIGHT);
 }
