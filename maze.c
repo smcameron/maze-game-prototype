@@ -138,25 +138,25 @@ static struct potion_descriptor {
     char *adjective;
     signed char health_impact;
 } potion_type[] = {
-    { "smelly", 0 },
-    { "funky", 0 },
-    { "misty", 0 },
-    { "frothy", 0 },
-    { "foamy", 0 },
-    { "fulminating", 0 },
-    { "smoking", 0 },
-    { "sparkling", 0 },
-    { "bubbling", 0 },
-    { "acrid", 0 },
-    { "pungent", 0 },
-    { "stinky", 0 },
-    { "aromatic", 0 },
-    { "gelatinous", 0 },
-    { "jiggly", 0 },
-    { "glowing", 0 },
-    { "luminescent", 0 },
-    { "pearlescent", 0 },
-    { "fruity", 0 },
+    { "SMELLY", 0 },
+    { "FUNKY", 0 },
+    { "MISTY", 0 },
+    { "FROTHY", 0 },
+    { "FOAMY", 0 },
+    { "FULMINATING", 0 },
+    { "SMOKING", 0 },
+    { "SPARKLING", 0 },
+    { "BUBBLING", 0 },
+    { "ACRID", 0 },
+    { "PUNGENT", 0 },
+    { "STINKY", 0 },
+    { "AROMATIC", 0 },
+    { "GELATINOUS", 0 },
+    { "JIGGLY", 0 },
+    { "GLOWING", 0 },
+    { "LUMINESCENT", 0 },
+    { "PEARLESCENT", 0 },
+    { "FRUITY", 0 },
 };
 
 static struct weapon_descriptor {
@@ -166,22 +166,22 @@ static struct weapon_descriptor {
     unsigned char shots;
     unsigned char damage;
 } weapon_type[] = {
- { "ordinary", "dagger", 0, 0, 3 },
- { "black", "sword", 0, 0, 5 },
- { "short", "sword", 0, 0, 8 },
- { "broad", "sword", 0, 0, 10 },
- { "long", "sword", 0, 0, 10 },
- { "dwarven", "sword", 0, 0, 12 },
- { "orcish", "sword", 0, 0, 13 },
- { "golden", "sword", 0, 0, 14 },
- { "elvish", "sword", 0, 0, 15 },
- { "lost", "katana", 0, 0, 15 },
- { "great", "sword", 0, 0, 16 },
- { "cosmic", "sword", 0, 0, 20 },
- { "glowing", "sword", 0, 0, 22 },
- { "fire", "saber", 0, 0, 25 },
- { "flaming", "scimitar", 0, 0, 27 },
- { "electro", "cutlass", 0, 0, 30 },
+ { "ORDINARY", "DAGGER", 0, 0, 3 },
+ { "BLACK", "SWORD", 0, 0, 5 },
+ { "SHORT", "SWORD", 0, 0, 8 },
+ { "BROAD", "SWORD", 0, 0, 10 },
+ { "LONG", "SWORD", 0, 0, 10 },
+ { "DWARVEN", "SWORD", 0, 0, 12 },
+ { "ORCISH", "SWORD", 0, 0, 13 },
+ { "GOLDEN", "SWORD", 0, 0, 14 },
+ { "ELVISH", "SWORD", 0, 0, 15 },
+ { "LOST", "KATANA", 0, 0, 15 },
+ { "GREAT", "SWORD", 0, 0, 16 },
+ { "COSMIC", "SWORD", 0, 0, 20 },
+ { "GLOWING", "SWORD", 0, 0, 22 },
+ { "FIRE", "SABER", 0, 0, 25 },
+ { "FLAMING", "SCIMITAR", 0, 0, 27 },
+ { "ELECTRO", "CUTLASS", 0, 0, 30 },
 };
 
 static struct armor_descriptor {
@@ -189,9 +189,9 @@ static struct armor_descriptor {
     char *name;
     unsigned char protection;
 } armor_type[] = {
-    { "leather", "armor", 2 },
-    { "chainmail", "armor", 5 },
-    { "plate", "armor", 8 },
+    { "LEATHER", "ARMOR", 2 },
+    { "CHAINMAIL", "ARMOR", 5 },
+    { "PLATE", "ARMOR", 8 },
 };
 
 union maze_object_type_specific_data {
@@ -881,14 +881,14 @@ static int check_for_encounter(unsigned char newx, unsigned char newy)
         if (maze_object[i].x == newx && maze_object[i].y == newy) {
             switch(maze_object_template[maze_object[i].type].category) {
             case MAZE_OBJECT_MONSTER:
-                encounter_text = "you encounter a";
+                encounter_text = "YOU ENCOUNTER A";
                 encounter_adjective = "";
                 encounter_name = maze_object_template[maze_object[i].type].name;
                 encounter_object = i;
                 monster = 1;
                 break;
             case MAZE_OBJECT_WEAPON:
-                encounter_text = "you found a";
+                encounter_text = "YOU FOUND A";
                 encounter_adjective = weapon_type[maze_object[i].tsd.weapon.type].adjective;
                 encounter_name = weapon_type[maze_object[i].tsd.weapon.type].name;
                 break;
@@ -897,42 +897,42 @@ static int check_for_encounter(unsigned char newx, unsigned char newy)
             case MAZE_OBJECT_SCROLL:
             case MAZE_OBJECT_GRENADE:
                 if (!monster) {
-                    encounter_text = "you found a";
+                    encounter_text = "YOU FOUND A";
                     encounter_adjective = "";
                     encounter_name = maze_object_template[maze_object[i].type].name;
                 }
                 break;
             case MAZE_OBJECT_ARMOR:
                 if (!monster) {
-                    encounter_text = "you found a";
+                    encounter_text = "YOU FOUND A";
                     encounter_adjective = armor_type[maze_object[i].tsd.armor.type].adjective;
                     encounter_name = armor_type[maze_object[i].tsd.armor.type].name;
                 }
                 break;
             case MAZE_OBJECT_POTION:
                 if (!monster) {
-                    encounter_text = "you found a";
+                    encounter_text = "YOU FOUND A";
                     encounter_adjective = potion_type[maze_object[i].tsd.potion.type].adjective;
-                    encounter_name = "potion";
+                    encounter_name = "POTION";
                 }
                 break;
             case MAZE_OBJECT_DOWN_LADDER:
                 if (!monster) {
-                    encounter_text = "a ladder";
+                    encounter_text = "A LADDER";
                     encounter_adjective = "";
-                    encounter_name = "leads down";
+                    encounter_name = "LEADS DOWN";
                 }
                 break;
             case MAZE_OBJECT_UP_LADDER:
                 if (!monster) {
-                    encounter_text = "a ladder";
+                    encounter_text = "A LADDER";
                     encounter_adjective = "";
-                    encounter_name = "leads up";
+                    encounter_name = "LEADS UP";
                 }
                 break;
             default:
                 if (!monster) {
-                    encounter_text = "you found something";
+                    encounter_text = "YOU FOUND SOMETHING";
                     encounter_adjective = "";
                     encounter_name = maze_object_template[maze_object[i].type].name;
                 }
@@ -1351,14 +1351,14 @@ static void maze_player_defeats_monster(void)
     FbClear();
     FbColor(RED);
     FbMove(10, SCREEN_YDIM / 2 - 10);
-    FbWriteLine("you kill the");
+    FbWriteLine("YOU KILL THE");
     FbMove(10, SCREEN_YDIM / 2);
     FbWriteLine(encounter_name);
     FbMove(10, SCREEN_YDIM / 2 + 10);
     if (player.weapon == 255) {
-        FbWriteLine("with your fists");
+        FbWriteLine("WITH YOUR FISTS");
     } else {
-        FbWriteLine("with the");
+        FbWriteLine("WITH THE");
         FbMove(10, SCREEN_YDIM / 2 + 20);
         FbWriteLine(weapon_type[maze_object[player.weapon].tsd.weapon.type].adjective);
         FbMove(10, SCREEN_YDIM / 2 + 30);
@@ -1400,7 +1400,7 @@ static void maze_choose_potion(void)
         if (maze_object[i].x == 255 ||
             (maze_object[i].x == player.x && maze_object[i].y == player.y)) {
             strcpy(name, potion_type[maze_object[i].tsd.potion.type].adjective);
-            strcat(name, " potion");
+            strcat(name, " POTION");
             maze_menu_add_item(name, MAZE_QUAFF_POTION, i);
         }
     }
@@ -1427,15 +1427,15 @@ static void maze_quaff_potion(void)
         hp = 0;
     delta = hp - player.hitpoints;
     if (delta < 0)
-       feel = "worse";
+       feel = "WORSE";
     else if (delta > 0)
-       feel = "better";
+       feel = "BETTER";
     else
-       feel = "nothing";
+       feel = "NOTHING";
     player.hitpoints = hp;
     FbClear();
     FbMove(10, SCREEN_YDIM / 2);
-    FbWriteLine("you feel");
+    FbWriteLine("YOU FEEL");
     FbMove(10, SCREEN_YDIM / 2 + 10);
     FbWriteLine(feel);
     maze_program_state = MAZE_SCREEN_RENDER;
@@ -1478,7 +1478,7 @@ static void maze_wield_weapon(void)
     maze_object[player.weapon].x = 255; /* In case we wield directly from dungeon floor */
     FbClear();
     FbMove(10, SCREEN_YDIM / 2);
-    FbWriteLine("you wield the");
+    FbWriteLine("YOU WIELD THE");
     FbMove(10, SCREEN_YDIM / 2 + 10);
     FbWriteLine(weapon_type[maze_object[player.weapon].tsd.weapon.type].adjective);
     FbMove(10, SCREEN_YDIM / 2 + 20);
@@ -1523,7 +1523,7 @@ static void maze_don_armor(void)
     maze_object[player.armor].x = 255; /* In case we don directly from dungeon floor */
     FbClear();
     FbMove(10, SCREEN_YDIM / 2);
-    FbWriteLine("you don the");
+    FbWriteLine("YOU DON THE");
     FbMove(10, SCREEN_YDIM / 2 + 10);
     FbWriteLine(armor_type[maze_object[player.armor].tsd.armor.type].adjective);
     FbMove(10, SCREEN_YDIM / 2 + 20);
@@ -1676,14 +1676,14 @@ static void maze_choose_take_or_drop_object(char *title, enum maze_program_state
                 strcat(name, weapon_type[maze_object[i].tsd.weapon.type].name);
                 break;
             case MAZE_OBJECT_KEY:
-                strcpy(name, "key");
+                strcpy(name, "KEY");
                 break;
             case MAZE_OBJECT_POTION:
                 strcpy(name, potion_type[maze_object[i].tsd.potion.type].adjective);
-                strcat(name, " potion");
+                strcat(name, " POTION");
                 break;
             case MAZE_OBJECT_TREASURE:
-                strcpy(name, "chest");
+                strcpy(name, "CHEST");
                 break;
             case MAZE_OBJECT_ARMOR:
                 if (i == player.armor)
@@ -1695,10 +1695,10 @@ static void maze_choose_take_or_drop_object(char *title, enum maze_program_state
                 strcat(name, armor_type[maze_object[i].tsd.armor.type].name);
                 break;
             case MAZE_OBJECT_SCROLL:
-                strcpy(name, "scroll");
+                strcpy(name, "SCROLL");
                 break;
             case MAZE_OBJECT_GRENADE:
-                strcpy(name, "grenade");
+                strcpy(name, "GRENADE");
                 break;
             default:
                 continue;
