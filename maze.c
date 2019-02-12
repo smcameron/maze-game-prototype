@@ -12,7 +12,7 @@
  and can't monopolize the CPU for any significant length
  of time (though it does have some compatibility bodges that
  allow it to run as a native linux program too.)  That is
- why maze_loop() is just a big switch statement that does
+ why maze_cb() is just a big switch statement that does
  different things based on maze_program_state and why there
  are so many global variables.  So the weirdness is there
  for a reason, and is not how I would normally write a program.
@@ -29,6 +29,14 @@
 #include "colors.h"
 #include "menu.h"
 #include "buttons.h"
+
+/* TODO: I shouldn't have to declare these myself. */
+#define size_t int
+extern char *strcpy(char *dest, const char *src);
+extern char *strncpy(char *dest, const char *src, size_t n);
+extern void *memset(void *s, int c, size_t n);
+extern char *strcat(char *dest, const char *src);
+
 #endif
 
 #include "build_bug_on.h"
@@ -1753,7 +1761,7 @@ static void maze_drop_object(void)
        player.armor = 255;
 }
 
-int maze_loop(void)
+int maze_cb(void)
 {
     switch (maze_program_state) {
     case MAZE_GAME_INIT:
@@ -1863,7 +1871,7 @@ int maze_loop(void)
 #ifdef __linux__
 int main(int argc, char *argv[])
 {
-        start_gtk(&argc, &argv, maze_loop, 240);
+        start_gtk(&argc, &argv, maze_cb, 240);
         return 0;
 }
 #endif
