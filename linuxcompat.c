@@ -388,22 +388,29 @@ static void destroy(GtkWidget *widget, gpointer data)
 static gint key_press_cb(GtkWidget* widget, GdkEventKey* event, gpointer data)
 {
 	switch (event->keyval) {
+
 	case GDK_w:
+	case GDK_KEY_Up:
 		button_pressed[UP] = 1;
 		break;
 	case GDK_s:
+	case GDK_KEY_Down:
 		button_pressed[DOWN] = 1;
 		break;
 	case GDK_a:
+	case GDK_KEY_Left:
 		button_pressed[LEFT] = 1;
 		break;
 	case GDK_d:
+	case GDK_KEY_Right:
 		button_pressed[RIGHT] = 1;
 		break;
 	case GDK_space:
+	case GDK_KEY_Return:
 		button_pressed[BUTTON] = 1;
 		break;
 	case GDK_q:
+	case GDK_KEY_Escape:
 		time_to_quit = 1;
 		break;
 	}
