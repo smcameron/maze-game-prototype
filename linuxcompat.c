@@ -648,11 +648,13 @@ void start_gtk(int *argc, char ***argv, int (*main_badge_function)(void), int ca
 	badge_function = main_badge_function;
 	timer_tag = g_timeout_add(1000 / callback_hz, advance_game, NULL);
 
+#if 0
 	/* Apparently (some versions of?) portaudio calls g_thread_init(). */
 	/* It may only be called once, and subsequent calls abort, so */
 	/* only call it if the thread system is not already initialized. */
 	if (!g_thread_supported ())
 		g_thread_init(NULL);
+#endif
 	gdk_threads_init();
 	gtk_main();
 }
