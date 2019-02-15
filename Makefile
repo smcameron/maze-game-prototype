@@ -15,7 +15,7 @@ linuxcompat.o:	linuxcompat.c linuxcompat.h bline.h
 	$(CC) ${MYCFLAGS} ${GTKCFLAGS} -c linuxcompat.c
 
 maze.o:	maze.c maze.h build_bug_on.h chest_points.h cobra_points.h dragon_points.h grenade_points.h \
-	key_points.h orc_points.h phantasm_points.h potion_points.h scroll_points.h \
+	orc_points.h phantasm_points.h potion_points.h scroll_points.h \
 	shield_points.h sword_points.h down_ladder_points.h up_ladder_points.h Makefile
 	$(CC) ${MYCFLAGS} ${GTKCFLAGS} -c maze.c
 
